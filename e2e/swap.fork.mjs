@@ -7,29 +7,24 @@
 // first argument, if any.
 import puppeteer from 'puppeteer-core'
 import { createServer } from 'vite'
+import { readFileSync } from 'node:fs'
+import { assertEthereumFork, forkRpc } from './lib/swap-fork.mjs'
+
+const pins = JSON.parse(readFileSync(new URL('./lab/pins.json', import.meta.url), 'utf8'))
 
 const out = process.argv[2]
-const FORK = process.env.SWAP_FORK || 'http://127.0.0.1:46599'
-const CHROME = process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe'
+const FORK = process.env.SWAP_FORK
+const CHROME = process.env.CHROME_PATH
 const ME = '0x5a3c9e1b7d24f6a8c0e2b4d6f8a1c3e5b7d9f024'
 const THEM = '0x1111111111111111111111111111111111111111'
 const WZNN = '0xb2e96a63479C2Edd2FD62b382c89D5CA79f572d3'
 process.env.VITE_EVM_RPCS = JSON.stringify({ 1: FORK })
 
-let rid = 0
-const rpc = async (method, params = []) => {
-  const r = await (await fetch(FORK, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: ++rid, method, params }) })).json()
-  if (r.error) throw new Error(r.error.message)
-  return r.result
-}
-// KyberSwap refuses anvil's well-known first account, so the wallet is an impersonated fresh one.
-await rpc('anvil_setBalance', [ME, '0x21e19e0c9bab2400000'])
-await rpc('anvil_impersonateAccount', [ME])
+let rpc
 const ethOf = async (a) => BigInt(await rpc('eth_getBalance', [a, 'latest']))
 const wznnOf = async (a) => BigInt(await rpc('eth_call', [{ to: WZNN, data: '0x70a08231' + a.slice(2).toLowerCase().padStart(64, '0') }, 'latest']))
 
 function installWallet(cfg) {
-  let id = 0
   window.__sent = []
   window.__reject = false
   const provider = {
@@ -40,10 +35,9 @@ function installWallet(cfg) {
         window.__reject = false
         throw Object.assign(new Error('MetaMask Tx Signature: User denied transaction signature.'), { code: 4001 })
       }
-      const r = await (await fetch(cfg.rpc, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: ++id, method, params: params ?? [] }) })).json()
-      if (r.error) throw Object.assign(new Error(r.error.message), { code: r.error.code })
-      if (method === 'eth_sendTransaction') window.__sent.push({ to: params[0].to, value: params[0].value, hash: r.result })
-      return r.result
+      const result = await window.__swapForkRpc(method, params ?? [])
+      if (method === 'eth_sendTransaction') window.__sent.push({ to: params[0].to, value: params[0].value, hash: result })
+      return result
     },
     on() {},
     removeListener() {},
@@ -54,20 +48,29 @@ function installWallet(cfg) {
   announce()
 }
 
-const server = await createServer({ server: { port: 5231 }, logLevel: 'error' })
-await server.listen()
-const b = await puppeteer.launch({ executablePath: CHROME, headless: true })
+let server, b
 let failed = false
 const check = (name, ok, detail = '') => {
   if (!ok) failed = true
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  ' + detail : ''}`)
 }
 try {
+  if (!CHROME) throw new Error('Set CHROME_PATH to the pinned fixture browser')
+  rpc = forkRpc(FORK)
+  await assertEthereumFork(rpc, pins.anvilVersion)
+  server = await createServer({ envDir: false, cacheDir: process.env.QUALIFICATION_CACHE_DIR, server: { host: '127.0.0.1', port: 5231, strictPort: true }, logLevel: 'error' })
+  await server.listen()
+  b = await puppeteer.launch({ executablePath: CHROME, userDataDir: process.env.BROWSER_PROFILE_DIR, headless: true })
+  if (!(await b.version()).endsWith('/' + pins.browserVersion)) throw new Error('The swap fixture requires the pinned browser version')
+  // Public fixture state on the caller's isolated fork, never a live wallet.
+  await rpc('anvil_setBalance', [ME, '0x21e19e0c9bab2400000'])
+  await rpc('anvil_impersonateAccount', [ME])
   const p = await b.newPage()
+  await p.exposeFunction('__swapForkRpc', (method, params) => rpc(method, params))
   await p.setViewport({ width: 1280, height: 1000 })
   const errs = []
   p.on('pageerror', (e) => errs.push(e.message))
-  await p.evaluateOnNewDocument(installWallet, { rpc: FORK, account: ME })
+  await p.evaluateOnNewDocument(installWallet, { account: ME })
   await p.goto(server.resolvedUrls.local[0])
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
   const text = (sel) => p.$eval(sel, (e) => e.innerText.replace(/\s*\n\s*/g, ' / ').trim())
@@ -106,12 +109,17 @@ try {
     const s = (await sent())[n - 1]
     for (let i = 0; i < 40; i++) {
       const r = await rpc('eth_getTransactionReceipt', [s.hash])
-      if (r) return { ...s, status: r.status }
+      if (r) {
+        await p.waitForFunction((hash) => {
+          const records = JSON.parse(localStorage.getItem('bridge.operations.v1') ?? '[]')
+          return records.some((record) => record.hash === hash && record.state === 'confirmed')
+        }, { timeout: 90000 }, s.hash)
+        return { ...s, status: r.status }
+      }
       await sleep(500)
     }
     throw new Error('no receipt')
   }
-  const toasts = () => p.evaluate(() => window.__bridge?.toasts?.map((t) => t.text) ?? [...document.querySelectorAll('[class*="toast"]')].map((e) => e.innerText.trim()))
 
   await p.waitForFunction(() => { const e = document.querySelector('[data-testid="bridge-from"]'); return e && !e.disabled }, { timeout: 60000 })
 
@@ -164,8 +172,10 @@ try {
   await p.click('[data-testid="bridge-flip"]')
   await p.click('[data-testid="bridge-advanced"]')
   await p.click('[data-testid="custom-recipient"]')
-  await p.click('input[aria-label="Recipient"]', { clickCount: 3 })
+  await p.$eval('input[aria-label="Recipient"]', (e) => { e.focus(); e.select() })
+  await p.keyboard.press('Backspace')
   await p.type('input[aria-label="Recipient"]', THEM)
+  if (await p.$eval('input[aria-label="Recipient"]', (e) => e.value) !== THEM) throw new Error('Fixture recipient input did not retain the intended address')
   await p.click('[role="dialog"] [aria-label="Close"]')
   await closed()
   await setAmount((Number(got / 2n) / 1e8).toFixed(4))
@@ -211,7 +221,10 @@ try {
   failed = true
   console.log('ERROR', e.message)
 } finally {
-  await b.close()
-  await server.close()
+  const cleanup = await Promise.allSettled([b?.close(), server?.close()])
+  if (cleanup.some((result) => result.status === 'rejected')) {
+    failed = true
+    console.log('ERROR fixture cleanup did not complete')
+  }
 }
 process.exit(failed ? 1 : 0)

@@ -1,0 +1,16 @@
+{
+  "goZenonRepository": "https://github.com/sol-znn/go-zenon",
+  "goZenonCommit": "616f0a61ebc8562846965822f94976e531e0937c",
+  "goZenonTree": "af654a9b7eb9ae81a1d76e5fea08b997beda0e9d",
+  "goVersion": "1.27.1",
+  "goImage": "golang:1.27.1-alpine@sha256:8a5910f31396cd4d89662f56c68b3ae31d374308270a1c3bd96672ee5ed43414",
+  "runtimeImage": "alpine:3.23@sha256:85fe1e81d6758c208f3e1eed4338a1997e19d4be002d4dd32d3100c9a8c010a0",
+  "anvilImage": "ghcr.io/foundry-rs/foundry:v1.8.5@sha256:32c8ea9ef052a440cb1620175987a3f49eff8b068a0c6a3d09ebf7f5f9a0e043",
+  "anvilVersion": "1.8.5",
+  "anvilArchives": {
+    "darwin_arm64": "56049728e25e44a61c7f2e49438023b0890cb45850ffcb7c882f90cd998baf83",
+    "linux_amd64": "6c66ffcc55fa4249197721baa3098bc208014ea1d8aa04b2ed50ac6bccffb226"
+  },
+  "browserVersion": "155.0.8059.39",
+  "chainIds": { "zenon": 322, "evm": 31337 }
+}

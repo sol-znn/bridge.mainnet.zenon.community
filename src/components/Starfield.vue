@@ -18,8 +18,7 @@
 // so the field keeps the same highs and lows. The generator is seeded, so it
 // is also the same field on every visit.
 //
-// It always runs. There is no reduced-motion branch here and there must not
-// be one (webdesign-lab/RULES.md section 4).
+// Reduced motion keeps a static frame. Chain activity remains available as text.
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 
 const canvas = ref<HTMLCanvasElement | null>(null)
@@ -67,6 +66,7 @@ let w = 0
 let h = 0
 let dpr = 1
 let last = 0
+let motion: MediaQueryList | null = null
 // The pointer, and how lit its surroundings are (eases to 0 when it leaves).
 let mx = -1e4
 let my = -1e4
@@ -148,12 +148,13 @@ function dot(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, col
 }
 
 function frame(now: number) {
-  raf = requestAnimationFrame(frame)
+  raf = motion?.matches ? 0 : requestAnimationFrame(frame)
   const c = canvas.value
   const ctx = c?.getContext('2d')
   if (!c || !ctx) return
   // A tab left in the background comes back with one long gap; treat it as a frame.
-  const dt = Math.min(0.05, (now - last) / 1000 || 0)
+  const dt = motion?.matches ? 0 : Math.min(0.05, (now - last) / 1000 || 0)
+  if (motion?.matches) now = 0
   last = now
   const set = document.documentElement.getAttribute('data-theme')
   const light = set === 'light' || (!set && matchMedia('(prefers-color-scheme: light)').matches)
@@ -208,7 +209,15 @@ function frame(now: number) {
   }
 }
 
+function restartMotion() {
+  cancelAnimationFrame(raf)
+  last = 0
+  frame(performance.now())
+}
+
 onMounted(() => {
+  motion = matchMedia('(prefers-reduced-motion: reduce)')
+  motion.addEventListener('change', restartMotion)
   resize()
   window.addEventListener('resize', resize)
   window.addEventListener('pointermove', onMove, { passive: true })
@@ -217,6 +226,7 @@ onMounted(() => {
 })
 onBeforeUnmount(() => {
   cancelAnimationFrame(raf)
+  motion?.removeEventListener('change', restartMotion)
   window.removeEventListener('resize', resize)
   window.removeEventListener('pointermove', onMove)
   document.documentElement.removeEventListener('pointerleave', onLeave)

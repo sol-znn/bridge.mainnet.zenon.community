@@ -1,3 +1,11 @@
+/** A local guard refused the request before a wallet was invoked. */
+export class NotSubmittedError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'NotSubmittedError'
+  }
+}
+
 // What a failure is called on screen: a few plain words, never a library's
 // dump. viem wraps a wallet's answer in layers and prints the request, the
 // arguments and its own version; a toast shows only what the user can act on.
@@ -52,8 +60,8 @@ export function userMessage(err: unknown): UserMessage {
   if (has(4900) || has(4901)) return say('Wallet is disconnected')
   if (/insufficient funds|exceeds the balance of the account/i.test(all)) return say('Not enough funds for gas')
   if (/nonce too low|replacement transaction underpriced|already known/i.test(all)) return say('A transaction is already pending')
-  if (/timed? ?out|took too long/i.test(all)) return say('Timed out. Try again.')
-  if (/failed to fetch|http request failed|network ?error|load failed/i.test(all)) return say('Network error. Try again.')
+  if (/timed? ?out|took too long/i.test(all)) return say('Timed out. Check the original operation before retrying.')
+  if (/failed to fetch|http request failed|network ?error|load failed/i.test(all)) return say('Network error. Check the original operation before retrying.')
 
   // A contract's own reason is the most useful thing a revert has.
   const reason = chain.map((l) => str(l.reason)).find(Boolean)

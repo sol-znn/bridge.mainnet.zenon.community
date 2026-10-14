@@ -18,7 +18,8 @@ import { EVM_CHAIN_ID, NETWORK_CLASS, TSS_KEY, evmPublic, send, sleep, zapi } fr
 import { wrapMessage, unwrapMessage, signTss } from './lib/messages.ts'
 import { encodeCall } from '../src/znn/abi.ts'
 import { BRIDGE } from '../src/config.ts'
-import { isAddress } from '../src/znn/primitives.ts'
+import { isUserAddress } from '../src/znn/primitives.ts'
+import { allPages } from '../src/core/paging.ts'
 import { AFFILIATE_LOG_INDEX } from '../src/core/status.ts'
 import { SEPARATOR } from '../src/core/referral.ts'
 
@@ -36,6 +37,8 @@ export class TestOrchestrator {
   private running = false
   private fromBlock = 0n
   private done = new Set<string>()
+  private activeTick: Promise<void> | null = null
+  private loop: Promise<void> | null = null
   readonly o: OrchestratorOptions
   signedWraps = 0
   registeredUnwraps = 0
@@ -50,31 +53,41 @@ export class TestOrchestrator {
 
   /** One pass over both directions. */
   async tick(): Promise<void> {
-    await this.signWraps()
-    await this.registerUnwraps()
+    if (this.activeTick) return this.activeTick
+    this.activeTick = (async () => {
+      try { await this.signWraps(); await this.registerUnwraps() }
+      finally { this.activeTick = null }
+    })()
+    return this.activeTick
   }
 
   start(everyMs = 3000): void {
+    if (this.loop) return
     this.running = true
-    void (async () => {
-      while (this.running) {
-        try {
-          await this.tick()
-        } catch (err) {
-          this.log(`tick failed: ${(err as Error).message}`)
+    this.loop = (async () => {
+      try {
+        while (this.running) {
+          try {
+            await this.tick()
+          } catch (err) {
+            this.log(`tick failed: ${(err as Error).message}`)
+          }
+          if (this.running) await sleep(everyMs)
         }
-        await sleep(everyMs)
-      }
+      } finally { this.loop = null }
     })()
   }
 
-  stop(): void {
+  /** Keep the worker alive until its original publication/read pass settles. */
+  async stop(): Promise<void> {
     this.running = false
+    await this.loop
+    await this.activeTick
   }
 
   private async signWraps(): Promise<void> {
-    const page = await zapi.unsignedWraps(0, 50)
-    for (const w of page.list) {
+    const wraps = await allPages((index, size) => zapi.unsignedWraps(index, size))
+    for (const w of wraps) {
       if (w.confirmationsToFinality > 0 || w.chainId !== EVM_CHAIN_ID || this.done.has(w.id)) continue
       const digest = wrapMessage({
         networkClass: w.networkClass,
@@ -85,8 +98,8 @@ export class TestOrchestrator {
         token: w.tokenAddress as `0x${string}`,
         amountMinusFee: w.amount - w.fee,
       })
-      this.done.add(w.id)
       await send({ toAddress: BRIDGE, data: encodeCall('UpdateWrapRequest', ['hash', 'string'], [w.id, signTss(digest, TSS_KEY)]) })
+      this.done.add(w.id)
       this.signedWraps++
       this.log(`signed wrap ${w.id.slice(0, 8)}`)
     }
@@ -98,23 +111,24 @@ export class TestOrchestrator {
     if (safe < this.fromBlock) return
     const logs = await evmPublic.getLogs({ address: this.o.bridge, event: UNWRAPPED, fromBlock: this.fromBlock, toBlock: safe })
     for (const l of logs) {
-      const key = `${l.transactionHash}:${l.logIndex}`
+      if (l.removed || (await evmPublic.getBlock({ blockNumber: l.blockNumber })).hash !== l.blockHash) throw new Error('EVM log is no longer canonical')
+      const key = `${l.blockHash}:${l.transactionHash}:${l.logIndex}`
       if (this.done.has(key)) continue
-      this.done.add(key)
-      const [to, referrer] = (l.args.to ?? '').split(SEPARATOR)
-      if (!isAddress(to)) {
-        this.log(`skipped unwrap with a bad recipient: ${l.args.to}`)
+      const parts = (l.args.to ?? '').split(SEPARATOR), [to, referrer] = parts
+      if (parts.length > 2 || !isUserAddress(to)) {
+        this.log('skipped unwrap with an invalid account recipient')
+        this.done.add(key)
         continue
       }
       let amount = l.args.amount!
       const entries: Array<{ to: string; amount: bigint; logIndex: number }> = []
-      if (this.o.affiliate && referrer && isAddress(referrer)) {
+      if (this.o.affiliate && referrer && isUserAddress(referrer) && referrer !== to) {
         entries.push({ to: referrer, amount: (amount * 2n) / 100n, logIndex: l.logIndex + AFFILIATE_LOG_INDEX })
         amount += amount / 100n
       }
       entries.unshift({ to, amount, logIndex: l.logIndex })
       for (const e of entries) {
-        if (await zapi.unwrapByHashAndLog(l.transactionHash, e.logIndex).catch(() => null)) continue
+        if (await zapi.unwrapByHashAndLog(l.transactionHash, e.logIndex)) continue
         const digest = unwrapMessage({
           networkClass: NETWORK_CLASS,
           chainId: EVM_CHAIN_ID,
@@ -135,7 +149,10 @@ export class TestOrchestrator {
         this.registeredUnwraps++
         this.log(`registered unwrap ${l.transactionHash.slice(0, 10)} log ${e.logIndex} to ${e.to.slice(0, 10)}`)
       }
+      this.done.add(key)
     }
-    this.fromBlock = safe + 1n
+    // Rescan a bounded overlap so a short lab reorg is reconsidered. A deep
+    // reorg beyond the fixture confirmation depth is an external test gate.
+    this.fromBlock = safe > 20n ? safe - 20n : 0n
   }
 }

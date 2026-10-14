@@ -2,17 +2,13 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https:; connect-src 'self' https: wss: http://127.0.0.1:* ws://127.0.0.1:* http://localhost:* ws://localhost:*; object-src 'none'; base-uri 'self'; form-action 'none'" />
+    <meta name="referrer" content="no-referrer" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark light" />
     <meta name="theme-color" content="#06090a" />
     <meta name="description" content="Move ZNN, QSR and LP tokens between Zenon Network of Momentum and Ethereum or BNB Chain." />
-    <script>
-      // Before first paint, so a light choice never flashes dark (src/composables/theme.ts).
-      try {
-        var t = localStorage.getItem('bridge.theme')
-        if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t)
-      } catch (e) {}
-    </script>
+    <script src="%BASE_URL%theme-init.js"></script>
     <title>Zenon bridge</title>
     <link rel="icon" href="/favicon.ico" />
     <link rel="manifest" href="/manifest.json" />

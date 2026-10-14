@@ -3,15 +3,16 @@
 // Redeem is open to anyone: on EVM the tokens go to the request's recipient
 // whoever sends the call, and on Zenon the same holds for `Redeem`.
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { ArrowRight, RefreshCw, Search, X, Loader2 } from 'lucide-vue-next'
+import { ArrowRight, RefreshCw, Search, X, Loader2 } from '@lucide/vue'
 import TokenIcon from '../components/TokenIcon.vue'
 import Modal from '../components/Modal.vue'
 import Amount from '../components/Amount.vue'
 import Address from '../components/Address.vue'
 import StatusChip from '../components/StatusChip.vue'
+import OperationRecovery from '../components/OperationRecovery.vue'
 import { activity, refreshActivity, setWatched, type Item } from '../state/activity.ts'
-import { bridge, bridgeDown, routeByZts } from '../state/bridge.ts'
-import { evm, ensureChain, walletForReads } from '../state/evm.ts'
+import { bridge, bridgeDown, nodeContext, routeByZts } from '../state/bridge.ts'
+import { evm, ensureChain } from '../state/evm.ts'
 import { syrius, sendBlock, connectSyrius } from '../state/zenon.ts'
 import { toast, toastError } from '../state/toasts.ts'
 import { userMessage } from '../core/errors.ts'
@@ -22,6 +23,7 @@ import { isAddress } from '../znn/primitives.ts'
 import { evmSignature, wrapStateFromRevert } from '../core/status.ts'
 import { clock, ago } from '../core/format.ts'
 import { config, evmChain, evmTxUrl, evmAddressUrl } from '../config.ts'
+import { submitTransaction, successfulReceipt, transactionPayload } from '../evm/transactions.ts'
 
 type Filter = 'all' | 'action' | 'pending' | 'done'
 const filter = ref<Filter>('all')
@@ -46,12 +48,14 @@ const counts = computed(() => ({
 }))
 
 const now = ref(Date.now() / 1000)
+let mounted = true
 let timer: ReturnType<typeof setInterval>
 onMounted(() => {
   timer = setInterval(() => (now.value = Date.now() / 1000), 1000)
   void refreshActivity()
 })
-onUnmounted(() => clearInterval(timer))
+onUnmounted(() => { mounted = false; clearInterval(timer) })
+const freshHistory = () => mounted && activity.readAt > 0 && Date.now() - activity.readAt < 120_000 && !activity.error
 const left = (i: Item) => (i.status.eta ? activity.builtAt + i.status.eta - now.value : 0)
 
 const trackOpen = ref(false)
@@ -69,13 +73,19 @@ async function redeemWrap(i: Item) {
   if (!net || !evm.selected || !evm.account) return void (evm.pickerOpen = true)
   activity.busy[i.key] = true
   try {
+    if (i.context !== activity.context || !freshHistory()) throw new Error('Refresh this request on its original network before redeeming')
+    const context = nodeContext(), account = evm.account, provider = evm.selected.provider, step = i.status.state
+    const guard = () => {
+      if (context !== nodeContext() || account !== evm.account || provider !== evm.selected?.provider || evm.chainId !== w.chainId || activity.context !== i.context || !freshHistory()) throw new Error('Wallet or request context changed before redemption')
+    }
     await ensureChain(w.chainId)
+    guard()
     const contract = net.contractAddress as `0x${string}`
     const args = [w.toAddress as `0x${string}`, w.tokenAddress as `0x${string}`, w.amount - w.fee, BigInt('0x' + w.id), evmSignature(w.signature)] as const
-    const reader = readClient(w.chainId, walletForReads())
+    const reader = readClient(w.chainId, { provider, chainId: w.chainId })
     // Simulate first: bridge.sol's revert reason says exactly why it cannot go yet.
     try {
-      await reader.simulateContract({ address: contract, abi: bridgeAbi, functionName: 'redeem', args, account: evm.account })
+      await reader.simulateContract({ address: contract, abi: bridgeAbi, functionName: 'redeem', args, account })
     } catch (err) {
       const msg = (err as Error).message
       const shown = userMessage(err)
@@ -83,12 +93,16 @@ async function redeemWrap(i: Item) {
       toast(state === 'done' ? 'Already redeemed' : state === 'delay' ? 'Not redeemable yet' : shown.text, state === 'done' ? 'ok' : shown.declined ? 'dim' : 'warn')
       return void (await refreshActivity())
     }
-    const wc = writeClient(w.chainId, evm.selected.provider, evm.account)
-    const hash = await wc.writeContract({ address: contract, abi: bridgeAbi, functionName: 'redeem', args, chain: wc.chain, account: evm.account })
+    guard()
+    const wc = writeClient(w.chainId, provider, account)
+    const hash = await submitTransaction({ chainId: w.chainId, account, kind: 'redeem', payload: transactionPayload(contract, bridgeAbi, 'redeem', args) }, guard,
+      () => wc.writeContract({ address: contract, abi: bridgeAbi, functionName: 'redeem', args, chain: wc.chain, account }))
     const url = evmTxUrl(w.chainId, hash)
-    toast(i.status.state === 'redeem' ? 'Redeem 1 of 2 sent' : 'Redeem 2 of 2 sent', 'wait', url ? { href: url, label: 'View' } : undefined)
-    await reader.waitForTransactionReceipt({ hash })
-    toast(i.status.state === 'redeem' ? 'Step 1 done. Finish after the delay.' : 'Done', 'ok')
+    toast(step === 'redeem' ? 'Redeem 1 of 2 submitted' : 'Redeem 2 of 2 submitted', 'wait', url ? { href: url, label: 'View' } : undefined)
+    await successfulReceipt(reader, w.chainId, hash)
+    const [redeemedAt] = await reader.readContract({ address: contract, abi: bridgeAbi, functionName: 'redeemsInfo', args: [BigInt('0x' + w.id)] })
+    if (step === 'redeem' && redeemedAt === 0n || step === 'finish' && redeemedAt !== (1n << 256n) - 1n) throw new Error('Receipt succeeded but the expected redemption state is not established')
+    toast(step === 'redeem' ? 'Step 1 confirmed. Finish after the delay.' : 'Redeem confirmed', 'ok')
     await refreshActivity()
   } catch (err) {
     toastError(err)
@@ -108,8 +122,9 @@ async function redeemUnwrap(i: Item) {
   }
   activity.busy[i.key] = true
   try {
-    const hash = await sendBlock(redeemBlock(u.transactionHash, u.logIndex))
-    toast('Redeem sent', 'ok', { href: config.zenonExplorerTx(hash), label: 'View' })
+    const guard = () => { if (i.context !== activity.context || !freshHistory()) throw new Error('Refresh this request on its original network before redeeming') }
+    const hash = await sendBlock(redeemBlock(u.transactionHash, u.logIndex), guard)
+    toast('Redeem submitted. Waiting for confirmation.', 'wait', { href: config.zenonExplorerTx(hash), label: 'View' })
     setTimeout(refreshActivity, 25_000)
   } catch (err) {
     toastError(err)
@@ -140,6 +155,8 @@ const connectedNothing = computed(() => !evm.account && !syrius.address && !acti
 
 <template>
   <section class="rise grid grid-cols-1 gap-5">
+    <OperationRecovery />
+    <p v-if="activity.error || activity.storageError" class="note warn" role="status">{{ activity.error || activity.storageError }}. Previously observed rows may be stale.</p>
     <div class="flex flex-wrap items-center gap-3">
       <h1 class="text-2xl font-semibold">Activity</h1>
       <button class="btn btn-ghost btn-sm" :disabled="activity.loading" aria-label="Refresh" @click="refreshActivity">
@@ -174,13 +191,14 @@ const connectedNothing = computed(() => !evm.account && !syrius.address && !acti
     <div v-if="connectedNothing" class="panel grid place-items-center gap-2 p-10 text-center text-soft">
       <p>Connect a wallet or track an address.</p>
     </div>
+    <div v-else-if="!activity.loadedOnce && activity.error" class="panel p-10 text-center text-soft">History unavailable. Retry the original network.</div>
     <div v-else-if="!activity.loadedOnce" class="grid gap-2">
       <div v-for="n in 3" :key="n" class="skeleton h-[76px]" />
     </div>
     <div v-else-if="!shown.length" class="panel p-10 text-center text-soft">None yet</div>
 
     <TransitionGroup v-else name="row" tag="div" class="grid gap-2">
-      <article v-for="i in shown" :key="i.key" class="row panel" data-testid="activity-row" :data-kind="i.kind" :data-state="i.status.state" :data-key="i.key">
+      <article v-for="i in shown" :key="i.key" class="row panel" data-testid="activity-row" :data-kind="i.kind" :data-state="i.status.state" :data-key="i.key" :data-source-tx="i.sourceTx.replace(/^0x/, '')">
         <div class="flex min-w-0 items-center gap-3">
           <!-- What arrives, on the chain it arrives on. -->
           <TokenIcon :symbol="symbolFor(i)" :chain="i.kind === 'wrap' ? evmChain(i.chainId).name : 'Zenon'" :size="40" />
@@ -205,7 +223,7 @@ const connectedNothing = computed(() => !evm.account && !syrius.address && !acti
           <span v-if="left(i) > 0 && !bridgeDown()" class="mono text-sm text-soft" title="Estimated time left">{{ clock(left(i)) }}</span>
           <StatusChip v-bind="shownStatus(i)" />
           <Address v-if="sourceUrl(i)" :value="i.sourceTx" :href="sourceUrl(i)" :head="4" :tail="4" :copy="false" class="hidden text-xs text-dim md:inline-flex" />
-          <button v-if="isAction(i)" data-testid="activity-action" class="btn btn-sm min-w-[96px]" :class="{ 'btn-plasma': i.key === firstAction }" :disabled="activity.busy[i.key]" @click="act(i)">
+          <button v-if="isAction(i)" data-testid="activity-action" class="btn btn-sm min-w-[96px]" :class="{ 'btn-plasma': i.key === firstAction }" :disabled="activity.busy[i.key] || !!activity.error || !activity.readAt" @click="act(i)">
             <Loader2 v-if="activity.busy[i.key]" :size="14" class="spin" />
             {{ i.status.state === 'finish' ? 'Finish' : 'Redeem' }}
           </button>

@@ -21,11 +21,15 @@ export function unitsToInput(value: bigint, decimals: number): string {
 
 /** null when the text is not an amount, or has more decimals than the token. */
 export function parseUnits(text: string, decimals: number): bigint | null {
-  const t = text.trim().replace(/,/g, '')
-  if (!/^\d*\.?\d*$/.test(t) || t === '' || t === '.') return null
+  // Inputs use a decimal dot and no grouping separators. Never guess whether
+  // a comma means a decimal or a thousands separator in the user's locale.
+  const t = text.trim()
+  if (!Number.isInteger(decimals) || decimals < 0 || decimals > 255 || t.length > 256) return null
+  if (!/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(t)) return null
   const [w, f = ''] = t.split('.')
   if (f.length > decimals) return null
-  return BigInt(w || '0') * 10n ** BigInt(decimals) + BigInt((f + '0'.repeat(decimals)).slice(0, decimals) || '0')
+  const value = BigInt(w || '0') * 10n ** BigInt(decimals) + BigInt((f + '0'.repeat(decimals)).slice(0, decimals) || '0')
+  return value < (1n << 256n) ? value : null
 }
 
 export function shorten(id: string, head = 6, tail = 4): string {

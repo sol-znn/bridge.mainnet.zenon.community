@@ -10,7 +10,7 @@
 
 export type Tone = 'ok' | 'wait' | 'warn' | 'danger' | 'dim'
 
-export type WrapState = 'confirming' | 'signing' | 'redeem' | 'delay' | 'finish' | 'done' | 'failed'
+export type WrapState = 'unavailable' | 'confirming' | 'signing' | 'redeem' | 'delay' | 'finish' | 'done' | 'failed'
 export type UnwrapState = 'signing' | 'delay' | 'redeem' | 'done' | 'revoked'
 
 export interface Status<S extends string> {
@@ -50,9 +50,10 @@ export function wrapStatus(i: WrapInputs): Status<WrapState> {
     }
   }
   if (!i.signature) return { state: 'signing', label: 'Signing', tone: 'wait' }
-  if (i.redeemBlock === null) return { state: 'redeem', label: 'Redeem', tone: 'warn', step: '1/2' }
+  if (i.redeemBlock === null) return { state: 'unavailable', label: 'Status unavailable', tone: 'dim' }
   if (i.redeemBlock === UINT256_MAX) return { state: 'done', label: 'Done', tone: 'ok' }
   if (i.redeemBlock === 0n) return { state: 'redeem', label: 'Redeem', tone: 'warn', step: '1/2' }
+  if (i.evmBlock === null || i.redeemDelay === null) return { state: 'unavailable', label: 'Status unavailable', tone: 'dim' }
   // bridge.sol: `(redeemInfo.blockNumber + redeemDelay) < block.number`, where
   // block.number is the block the second redeem lands in, at best latest + 1.
   // So it can be sent once the latest block is blockNumber + redeemDelay.

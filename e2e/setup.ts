@@ -38,6 +38,7 @@ import {
   zAdmin,
   zapi,
   height,
+  assertLab,
 } from './lib/lab.ts'
 import { encodeCall } from '../src/znn/abi.ts'
 import { BRIDGE } from '../src/config.ts'
@@ -182,6 +183,7 @@ async function setupZenon(bridge: `0x${string}`, token: `0x${string}`): Promise<
 }
 
 export async function setup(): Promise<Deployment> {
+  await assertLab()
   if (zAdmin.address !== LAB_ADMIN_ADDRESS) throw new Error(`devnet index 1 derives to ${zAdmin.address}, expected ${LAB_ADMIN_ADDRESS}`)
   const { bridge, token } = await setupEvm()
   await setupZenon(bridge, token)

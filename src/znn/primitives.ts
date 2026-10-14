@@ -135,6 +135,16 @@ export function isAddress(s: string): boolean {
   }
 }
 
+/** Supported transfer beneficiary: a nonzero user address, never an embedded contract. */
+export function isUserAddress(s: string): boolean {
+  try {
+    const core = parseAddress(s)
+    return core[0] === 0 && core.some((b) => b !== 0)
+  } catch {
+    return false
+  }
+}
+
 /**
  * sha3-256 of the public key, truncated to 19 bytes behind a zero user byte.
  *

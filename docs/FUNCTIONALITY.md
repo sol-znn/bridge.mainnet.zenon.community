@@ -5,8 +5,7 @@ This documents the app that was deployed at `bridge.mainnet.zenon.community` up 
 source was recovered from the build's source maps (`static/js/main.*.js.map`, `sourcesContent`).
 Paths below are relative to that recovered `src/`.
 
-The rebuild preserves every flow listed here. Where it deliberately differs, the difference is
-marked **Rebuild:**.
+This is a historical inventory, not current release or integration evidence. Source pairing and ownership must be established as described in [PROVENANCE.md](PROVENANCE.md). Current publication guards, recovery and supported integration limits are in [ARCHITECTURE.md](ARCHITECTURE.md), [RECOVERY.md](RECOVERY.md) and [SUPPORT.md](SUPPORT.md). The historical **Rebuild:** notes do not qualify a real wallet, DEX or production service.
 
 ## Stack
 

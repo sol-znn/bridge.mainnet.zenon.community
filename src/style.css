@@ -7,8 +7,7 @@
     refused or down. Pink is the one accent (a referral). Money is not coloured.
   - Plasma, the gradient from the ZNN mark, fills the main action of a view
     and nothing else.
-  - There is no prefers-reduced-motion rule here and there must not be one:
-    motion is how the page shows the chain is live (RULES.md section 4).
+  - Respect reduced motion; status text also communicates chain activity.
 
   The shape is the owner's brief of 2026-10-12, after stargate.finance: a
   neutral near-black page under a moving starfield, large soft cards, pill
@@ -20,6 +19,15 @@
 @import 'tailwindcss';
 @import '@fontsource-variable/space-grotesk';
 @import '@fontsource-variable/jetbrains-mono';
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 

@@ -61,10 +61,10 @@ services:
   # The EVM side. Chain 31337, instant blocks, state kept in memory: a fresh
   # chain every `up`, which setup.ts redeploys the contracts on.
   anvil:
-    image: ghcr.io/foundry-rs/foundry:stable
+    image: ${LAB_ANVIL_IMAGE:?run lab.sh, which sets the pinned image digest}
     container_name: bridge-lab-anvil
     restart: "no"
-    entrypoint: ["anvil", "--host", "0.0.0.0", "--chain-id", "31337"]
+    entrypoint: ["anvil", "--host", "0.0.0.0", "--chain-id", "31337", "--block-time", "1"]
     ports:
       - "127.0.0.1:46545:8545"
     networks: { lab: { ipv4_address: 172.38.0.20 } }

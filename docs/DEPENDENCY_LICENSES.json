@@ -1,0 +1,551 @@
+{
+  "schema": 1,
+  "scope": "Installed packages classified as non-dev by the exact lockfile; not a claim that all are bundled",
+  "lockfileSha256": "7bd60a80362830c771b44c3589659a4c079044bda6910a00849d0400ea1c5667",
+  "provenance": "Installed file/version observations paired to lock entries; upstream tarball identity is declared by the lockfile, not requalified by this inventory",
+  "rootLicenseAuthority": "NOT_ESTABLISHED",
+  "distributionAcceptance": "OWNER_REVIEW_REQUIRED",
+  "noticePolicy": "These digests are review inputs; retain the actual applicable license/notice texts when distributing. This inventory does not replace attribution or grant a root license.",
+  "packages": [
+    {
+      "packagePath": "node_modules/@adraffy/ens-normalize",
+      "name": "@adraffy/ens-normalize",
+      "lockedVersion": "1.11.1",
+      "installedVersion": "1.11.1",
+      "versionMatches": true,
+      "integrity": "sha512-nhCBV3quEgesuf7c7KYfperqSS14T8bYuvJ8PcLJp6znkZpFc0AuW4qBtr8eKVyPPe/8RSr7sglCWPU5eaxwKQ==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "3b458813ab3316b16bf004c4201d4a0583cf615514422dabf4d7c025988d613d"
+      }
+    },
+    {
+      "packagePath": "node_modules/@babel/helper-string-parser",
+      "name": "@babel/helper-string-parser",
+      "lockedVersion": "7.29.7",
+      "installedVersion": "7.29.7",
+      "versionMatches": true,
+      "integrity": "sha512-Pb5ijPrZ89GDH8223L4UP8i6QApWxs04RbPQJTeWDV0/keR2E36MeKnyr6LYmUUvqRRI+Iv87SuF1W6ErINzYw==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "117da2af0d4ce0fe1c8e19b5cff9dcd806adf973d328d27b11d4448c4ff24f76"
+      }
+    },
+    {
+      "packagePath": "node_modules/@babel/helper-validator-identifier",
+      "name": "@babel/helper-validator-identifier",
+      "lockedVersion": "7.29.7",
+      "installedVersion": "7.29.7",
+      "versionMatches": true,
+      "integrity": "sha512-qehxGkRj55h/ff8EMaJ+cYhyaKlHIxqYDn682wQD7RNp9UujOQsHog2uS0r2vzr4pW+sXf90NeeayjcNaX3fFg==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "117da2af0d4ce0fe1c8e19b5cff9dcd806adf973d328d27b11d4448c4ff24f76"
+      }
+    },
+    {
+      "packagePath": "node_modules/@babel/parser",
+      "name": "@babel/parser",
+      "lockedVersion": "7.29.9",
+      "installedVersion": "7.29.9",
+      "versionMatches": true,
+      "integrity": "sha512-CjXrNHTnvqBVqHgdBysY3vk2T8tpJHb5/RMeHJBTyVa9xgugCB0CJTx/3oO8RV2QRQP391RWpB7D6hLjm8V9uA==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "2e97627cb278aa7556fb9e8817368302301a595b6c7582512b8d74c57b773652"
+      }
+    },
+    {
+      "packagePath": "node_modules/@babel/types",
+      "name": "@babel/types",
+      "lockedVersion": "7.29.8",
+      "installedVersion": "7.29.8",
+      "versionMatches": true,
+      "integrity": "sha512-Vj1jF3cPfxg7OAfoI7QnVKLoILlm2JF9pnVHrX8qx7AHMiYWT+NDAA7jChlNgRS4WTLc/fD1lXLmPixluj+3Gg==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "117da2af0d4ce0fe1c8e19b5cff9dcd806adf973d328d27b11d4448c4ff24f76"
+      }
+    },
+    {
+      "packagePath": "node_modules/@fontsource-variable/jetbrains-mono",
+      "name": "@fontsource-variable/jetbrains-mono",
+      "lockedVersion": "5.3.0",
+      "installedVersion": "5.3.0",
+      "versionMatches": true,
+      "integrity": "sha512-F32xpS2NsGYoQi2ADSkKTgpJj7ozajsGgDJ8woTnqjmIB+dxDIqImjl4pXZVEExu8UFZ2ndhmX18EBS/hdz3Lw==",
+      "declaredLicense": "OFL-1.1",
+      "noticeFileSha256": {
+        "LICENSE": "403581b69dac5cff4079205e01c6b467e56af449ecbd7247693ddb1baafa005b"
+      }
+    },
+    {
+      "packagePath": "node_modules/@fontsource-variable/space-grotesk",
+      "name": "@fontsource-variable/space-grotesk",
+      "lockedVersion": "5.3.0",
+      "installedVersion": "5.3.0",
+      "versionMatches": true,
+      "integrity": "sha512-2IxmvfB08i9vnGB3Ym/AXvhRE+8XOjWMXIyDum03c+tPwH0FUoMNQfGpU8NXPxjbws0Vvss3AH0Zqt4oJBBAdw==",
+      "declaredLicense": "OFL-1.1",
+      "noticeFileSha256": {
+        "LICENSE": "18a4de52385f6b988782639d5d0cc1326e5a8c2de9a7f01d7b20d9aedcc60943"
+      }
+    },
+    {
+      "packagePath": "node_modules/@jridgewell/sourcemap-codec",
+      "name": "@jridgewell/sourcemap-codec",
+      "lockedVersion": "1.6.0",
+      "installedVersion": "1.6.0",
+      "versionMatches": true,
+      "integrity": "sha512-T7jf+5zgsZHwNJ4lvQ7/aezbyk0nNX+zJVWpmHA7VYsEx7a7qr5Rg5IbtJFqkgze5Y2sruq1RUY8Q837Od7iFw==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "769d154fbde32a915af110b1123650bc79f4cbe675acc66e005265bf069c6c6c"
+      }
+    },
+    {
+      "packagePath": "node_modules/@lucide/vue",
+      "name": "@lucide/vue",
+      "lockedVersion": "1.55.0",
+      "installedVersion": "1.55.0",
+      "versionMatches": true,
+      "integrity": "sha512-3lpuTiVGIMbG7vEVhcDnHvIu+ZkjXka7eOp9tIA9iDPu6GHpfqwykVyAb+LM1uYYVgSI9Myo4HGzTvVnTS2CyA==",
+      "declaredLicense": "ISC",
+      "noticeFileSha256": {
+        "LICENSE": "b495047bd93a9b06913511076f504daba17d5bbeb3e0650f3bb53a4220329c57"
+      }
+    },
+    {
+      "packagePath": "node_modules/@noble/ciphers",
+      "name": "@noble/ciphers",
+      "lockedVersion": "1.3.0",
+      "installedVersion": "1.3.0",
+      "versionMatches": true,
+      "integrity": "sha512-2I0gnIVPtfnMw9ee9h1dJG7tp81+8Ob3OJb3Mv37rx5L40/b0i7djjCVvGOVqc9AEIQyvyu1i6ypKdFw8R8gQw==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "f36671a5487c9c5050efacb58011c37c24c55a889803cb036cf9d9a6347c1e2d"
+      }
+    },
+    {
+      "packagePath": "node_modules/@noble/curves",
+      "name": "@noble/curves",
+      "lockedVersion": "1.9.7",
+      "installedVersion": "1.9.7",
+      "versionMatches": true,
+      "integrity": "sha512-gbKGcRUYIjA3/zCCNaWDciTMFI0dCkvou3TL8Zmy5Nc7sJ47a0jtOeZoTaMxkuqRo9cRhjOdZJXegxYE5FN/xw==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec"
+      }
+    },
+    {
+      "packagePath": "node_modules/@noble/hashes",
+      "name": "@noble/hashes",
+      "lockedVersion": "1.8.0",
+      "installedVersion": "1.8.0",
+      "versionMatches": true,
+      "integrity": "sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec"
+      }
+    },
+    {
+      "packagePath": "node_modules/@scure/base",
+      "name": "@scure/base",
+      "lockedVersion": "1.2.6",
+      "installedVersion": "1.2.6",
+      "versionMatches": true,
+      "integrity": "sha512-g/nm5FgUa//MCj1gV09zTJTaM6KBAHqLN907YVQqf7zC49+DcO4B1so4ZX07Ef10Twr6nuqYEH9GEggFXA4Fmg==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "3239e134eb6e6d64538ca76498c7fcb08a395249dd9d4af9927bf6d0169ee429"
+      }
+    },
+    {
+      "packagePath": "node_modules/@scure/bip32",
+      "name": "@scure/bip32",
+      "lockedVersion": "1.7.0",
+      "installedVersion": "1.7.0",
+      "versionMatches": true,
+      "integrity": "sha512-E4FFX/N3f4B80AKWp5dP6ow+flD1LQZo/w8UnLGYZO674jS6YnYeepycOOksv+vLPSpgN35wgKgy+ybfTb2SMw==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "1565efd0ec4580bfaa96c7eeaaa9af3791baa1cc562c3bde62d0a055910b9ec7"
+      }
+    },
+    {
+      "packagePath": "node_modules/@scure/bip39",
+      "name": "@scure/bip39",
+      "lockedVersion": "1.6.0",
+      "installedVersion": "1.6.0",
+      "versionMatches": true,
+      "integrity": "sha512-+lF0BbLiJNwVlev4eKelw1WWLaiKXw7sSl8T6FvBlWkdX+94aGJ4o8XjUdlyhTCjd8c+B3KT3JfS8P0bLRNU6A==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "1565efd0ec4580bfaa96c7eeaaa9af3791baa1cc562c3bde62d0a055910b9ec7"
+      }
+    },
+    {
+      "packagePath": "node_modules/@vue/compiler-core",
+      "name": "@vue/compiler-core",
+      "lockedVersion": "3.5.43",
+      "installedVersion": "3.5.43",
+      "versionMatches": true,
+      "integrity": "sha512-zdiLhnbe1QQqgDT8xZMpNmyqZ3qlI+/Q/FHQco57Kwl/b05HhCzN6eVGN9QU9rbga4CrS0H5SYY8VGHZCt/1Hg==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "1bb85cc9b13b81ef41c81c51866172fc345e0503c86726a6755b796590b70175"
+      }
+    },
+    {
+      "packagePath": "node_modules/@vue/compiler-core/node_modules/estree-walker",
+      "name": "estree-walker",
+      "lockedVersion": "2.0.2",
+      "installedVersion": "2.0.2",
+      "versionMatches": true,
+      "integrity": "sha512-Rfkk/Mp/DL7JVje3u18FxFujQlTNR2q6QfMSMB7AvCBx91NGj/ba3kCfza0f6dVDbw7YlRf/nDrn7pQrCCyQ/w==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "8a6dcbabe7179f9c8489c08a7d874d0f1e093ae7449e03756ccf87cb9d0e296e"
+      }
+    },
+    {
+      "packagePath": "node_modules/@vue/compiler-dom",
+      "name": "@vue/compiler-dom",
+      "lockedVersion": "3.5.43",
+      "installedVersion": "3.5.43",
+      "versionMatches": true,
+      "integrity": "sha512-PEZoAk3NQmsn/ejMzSOCyTYqwGqczrWm70PuhBKjjv1+TCoQAaO/zOqNwjV+honlNstT5ILxtc+8r8UUfj+iEQ==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "1bb85cc9b13b81ef41c81c51866172fc345e0503c86726a6755b796590b70175"
+      }
+    },
+    {
+      "packagePath": "node_modules/@vue/compiler-sfc",
+      "name": "@vue/compiler-sfc",
+      "lockedVersion": "3.5.43",
+      "installedVersion": "3.5.43",
+      "versionMatches": true,
+      "integrity": "sha512-FCbrG3XNCRl+js3huuKx4IVHBLTvMkJhVepjbxSPu1gn4yWLaYtGNQdjJGZaMytXB6qb76qQDDmDSLy/vkmleQ==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "1bb85cc9b13b81ef41c81c51866172fc345e0503c86726a6755b796590b70175"
+      }
+    },
+    {
+      "packagePath": "node_modules/@vue/compiler-sfc/node_modules/estree-walker",
+      "name": "estree-walker",
+      "lockedVersion": "2.0.2",
+      "installedVersion": "2.0.2",
+      "versionMatches": true,
+      "integrity": "sha512-Rfkk/Mp/DL7JVje3u18FxFujQlTNR2q6QfMSMB7AvCBx91NGj/ba3kCfza0f6dVDbw7YlRf/nDrn7pQrCCyQ/w==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "8a6dcbabe7179f9c8489c08a7d874d0f1e093ae7449e03756ccf87cb9d0e296e"
+      }
+    },
+    {
+      "packagePath": "node_modules/@vue/compiler-ssr",
+      "name": "@vue/compiler-ssr",
+      "lockedVersion": "3.5.43",
+      "installedVersion": "3.5.43",
+      "versionMatches": true,
+      "integrity": "sha512-GF62orf7KiJX9RqrHNGrYBudsQGD0OhJ5nDs90O8UiDuS40+YMYomiXu6w6EuvtXuRDc3MSNis3EaaSKAVSWpg==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "1bb85cc9b13b81ef41c81c51866172fc345e0503c86726a6755b796590b70175"
+      }
+    },
+    {
+      "packagePath": "node_modules/@vue/reactivity",
+      "name": "@vue/reactivity",
+      "lockedVersion": "3.5.43",
+      "installedVersion": "3.5.43",
+      "versionMatches": true,
+      "integrity": "sha512-G/c9GyOZNI2jVaaS6OX1EF1SSFSv7H0ERqNTl4+DTFMlZmB5eVAB53aLQNam/7NL2NPtaDD7RdVrzf8uJzMuOA==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "1bb85cc9b13b81ef41c81c51866172fc345e0503c86726a6755b796590b70175"
+      }
+    },
+    {
+      "packagePath": "node_modules/@vue/runtime-core",
+      "name": "@vue/runtime-core",
+      "lockedVersion": "3.5.43",
+      "installedVersion": "3.5.43",
+      "versionMatches": true,
+      "integrity": "sha512-hU6U6VnVhBGQDpvlnnDlIB8ZGJBiOcgk2lh/0InltHiz3D8oSkluvuvY+do1G2H3+udeKFsmaBlgVYP7gXQzEw==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "1bb85cc9b13b81ef41c81c51866172fc345e0503c86726a6755b796590b70175"
+      }
+    },
+    {
+      "packagePath": "node_modules/@vue/runtime-dom",
+      "name": "@vue/runtime-dom",
+      "lockedVersion": "3.5.43",
+      "installedVersion": "3.5.43",
+      "versionMatches": true,
+      "integrity": "sha512-Bb2Jc0YjjJdMt1SJmb9b2L/IWd3I8lIT9x9eS/xvvP9CiVgna0ffua74xKRmt4/uSJ+0r4iN8ex1jrqkhQGWQw==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "1bb85cc9b13b81ef41c81c51866172fc345e0503c86726a6755b796590b70175"
+      }
+    },
+    {
+      "packagePath": "node_modules/@vue/server-renderer",
+      "name": "@vue/server-renderer",
+      "lockedVersion": "3.5.43",
+      "installedVersion": "3.5.43",
+      "versionMatches": true,
+      "integrity": "sha512-l2Ygjv9NehV94PSBxNWsAHC0j/eIIKbn92mBuWXAPGLnn6HfJ6MH5ubsd+Nk0YoZ5FRuxWI1P2VSoh+dbPQhCQ==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "1bb85cc9b13b81ef41c81c51866172fc345e0503c86726a6755b796590b70175"
+      }
+    },
+    {
+      "packagePath": "node_modules/@vue/shared",
+      "name": "@vue/shared",
+      "lockedVersion": "3.5.43",
+      "installedVersion": "3.5.43",
+      "versionMatches": true,
+      "integrity": "sha512-uksS7YGMR5NZyr4JNq0Rp+QyLns0ueaz20KwzIPW9R0LH1Vnt4E+XUM29PNseEbf1www2gOuhuDi5AKOIXag9Q==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "1bb85cc9b13b81ef41c81c51866172fc345e0503c86726a6755b796590b70175"
+      }
+    },
+    {
+      "packagePath": "node_modules/abitype",
+      "name": "abitype",
+      "lockedVersion": "1.2.3",
+      "installedVersion": "1.2.3",
+      "versionMatches": true,
+      "integrity": "sha512-Ofer5QUnuUdTFsBRwARMoWKOH1ND5ehwYhJ3OJ/BQO+StkwQjHw0XyVh4vDttzHB7QOFhPHa/o413PJ82gU/Tg==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "e7f5360a60628940fee8653802d7221d2b9575e26268be2a3a2fdbc04aa84321"
+      }
+    },
+    {
+      "packagePath": "node_modules/bech32",
+      "name": "bech32",
+      "lockedVersion": "2.0.0",
+      "installedVersion": "2.0.0",
+      "versionMatches": true,
+      "integrity": "sha512-LcknSilhIGatDAsY1ak2I8VtGaHNhgMSYVxFrGLXv+xLHytaKZKcaUJJUE7qmBr7h33o5YQwP55pMI0xmkpJwg==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "e392496fe60945ccaffa39f0441504355aebd85a0cd428ad4e9173f763b77e9d"
+      }
+    },
+    {
+      "packagePath": "node_modules/csstype",
+      "name": "csstype",
+      "lockedVersion": "3.2.3",
+      "installedVersion": "3.2.3",
+      "versionMatches": true,
+      "integrity": "sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "11d55bd4541c75ee7879547ac49089c489163dae49551389713c3d026cab383e"
+      }
+    },
+    {
+      "packagePath": "node_modules/entities",
+      "name": "entities",
+      "lockedVersion": "7.0.1",
+      "installedVersion": "7.0.1",
+      "versionMatches": true,
+      "integrity": "sha512-TWrgLOFUQTH994YUyl1yT4uyavY5nNB5muff+RtWaqNVCAK408b5ZnnbNAUEWLTCpum9w6arT70i1XdQ4UeOPA==",
+      "declaredLicense": "BSD-2-Clause",
+      "noticeFileSha256": {
+        "LICENSE": "cb992345949ccd6e8394b2cd6c465f7b897c864f845937dbf64e8997f389e164"
+      }
+    },
+    {
+      "packagePath": "node_modules/eventemitter3",
+      "name": "eventemitter3",
+      "lockedVersion": "5.0.1",
+      "installedVersion": "5.0.1",
+      "versionMatches": true,
+      "integrity": "sha512-GWkBvjiSZK87ELrYOSESUYeVIc9mvLLf/nXalMOS5dYrgZq9o5OVkbZAVM06CVxYsCwH9BDZFPlQTlPA1j4ahA==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "3aecc12b1cb28832b5f65ab64291de96568c3f236a74d646281b4491f7bcadbf"
+      }
+    },
+    {
+      "packagePath": "node_modules/isows",
+      "name": "isows",
+      "lockedVersion": "1.0.7",
+      "installedVersion": "1.0.7",
+      "versionMatches": true,
+      "integrity": "sha512-I1fSfDCZL5P0v33sVqeTDSpcstAg/N+wF5HS033mogOVIp4B+oHC7oOCsA3axAbBSGTJ8QubbNmnIRN/h8U7hg==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "091d17ae5f625ffeb381e7109daaf6c492dd32502d612d8ecd24e2ddf6d16b74"
+      }
+    },
+    {
+      "packagePath": "node_modules/magic-string",
+      "name": "magic-string",
+      "lockedVersion": "0.30.21",
+      "installedVersion": "0.30.21",
+      "versionMatches": true,
+      "integrity": "sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "1cbe51b907662f6cb1492b16c359384a595180bf0e4d101603ed525e75c4e484"
+      }
+    },
+    {
+      "packagePath": "node_modules/nanoid",
+      "name": "nanoid",
+      "lockedVersion": "3.3.20",
+      "installedVersion": "3.3.20",
+      "versionMatches": true,
+      "integrity": "sha512-uKdg2G3GNCKQn9byYOpxbGqrT2fGO5KRt5J/8b3pok8rT6qxGWF6hxMyJiEYtAf+FVyYuD9hRaDqX5uPFYJ4ZQ==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "da4db1480d9beea3483a2eda5c53b22238d0827d57da162b48f122e04d2d9987"
+      }
+    },
+    {
+      "packagePath": "node_modules/ox",
+      "name": "ox",
+      "lockedVersion": "0.14.54",
+      "installedVersion": "0.14.54",
+      "versionMatches": true,
+      "integrity": "sha512-52PGH6ldJmWY9+iy/TBSJUsCSy5NmLvkVBYTINmO8srsjRrCmCdO575kGizmZ1jpNQ1gnlpVwiciIpU37fcULA==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "84ecb61c470de66e88a79c7d0ee8ce068e743693a4c249017545b4c8d4f9984d"
+      }
+    },
+    {
+      "packagePath": "node_modules/ox/node_modules/@noble/curves",
+      "name": "@noble/curves",
+      "lockedVersion": "1.9.1",
+      "installedVersion": "1.9.1",
+      "versionMatches": true,
+      "integrity": "sha512-k11yZxZg+t+gWvBbIswW0yoJlu8cHOC7dhunwOzoWH/mXGBiYyR4YY6hAEK/3EUs4UpB8la1RfdRpeGsFHkWsA==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec"
+      }
+    },
+    {
+      "packagePath": "node_modules/picocolors",
+      "name": "picocolors",
+      "lockedVersion": "1.1.1",
+      "installedVersion": "1.1.1",
+      "versionMatches": true,
+      "integrity": "sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==",
+      "declaredLicense": "ISC",
+      "noticeFileSha256": {
+        "LICENSE": "6582629e2979466878f6014313dcc2f3756c9616148682227ce3063dde310750"
+      }
+    },
+    {
+      "packagePath": "node_modules/postcss",
+      "name": "postcss",
+      "lockedVersion": "8.5.29",
+      "installedVersion": "8.5.29",
+      "versionMatches": true,
+      "integrity": "sha512-49cGhUbXj8Qenv0iTMxA1cFBzxXoctpC9Ujd77t1WcbJIr6nF/eI7g/8MgxrYldFRuAXvja7xQRwavoW7kgrxQ==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "5be1f3465bba68a626777f984878814aaf35e7ef8e9fd314d469bcf887050fb8"
+      }
+    },
+    {
+      "packagePath": "node_modules/source-map-js",
+      "name": "source-map-js",
+      "lockedVersion": "1.2.2",
+      "installedVersion": "1.2.2",
+      "versionMatches": true,
+      "integrity": "sha512-KGj/8Y43x35aZVDtt+J4mK1hoLGHULMYfSkODJNQjNDC3oW1PqPoxMwo0pLUsWM/UEGzON/NxeHywEfNXNP3Vw==",
+      "declaredLicense": "BSD-3-Clause",
+      "noticeFileSha256": {
+        "LICENSE": "6cb0631f71c7749763fd3dd1d5bee52dd1070ec17f2edc1710079ad070bd2fbd"
+      }
+    },
+    {
+      "packagePath": "node_modules/typescript",
+      "name": "typescript",
+      "lockedVersion": "5.9.3",
+      "installedVersion": "5.9.3",
+      "versionMatches": true,
+      "integrity": "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==",
+      "declaredLicense": "Apache-2.0",
+      "noticeFileSha256": {
+        "LICENSE.txt": "a7d00bfd54525bc694b6e32f64c7ebcf5e6b7ae3657be5cc12767bce74654a47"
+      }
+    },
+    {
+      "packagePath": "node_modules/viem",
+      "name": "viem",
+      "lockedVersion": "2.57.4",
+      "installedVersion": "2.57.4",
+      "versionMatches": true,
+      "integrity": "sha512-ro+8AKrcGU6tPfou0gBRYv6bxnU3tPxxJGY4qpJwjiR40eHCWzeGhrAgYMlIncFtlnry2/yGjz57WOC67oshCQ==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "091d17ae5f625ffeb381e7109daaf6c492dd32502d612d8ecd24e2ddf6d16b74"
+      }
+    },
+    {
+      "packagePath": "node_modules/viem/node_modules/@noble/curves",
+      "name": "@noble/curves",
+      "lockedVersion": "1.9.1",
+      "installedVersion": "1.9.1",
+      "versionMatches": true,
+      "integrity": "sha512-k11yZxZg+t+gWvBbIswW0yoJlu8cHOC7dhunwOzoWH/mXGBiYyR4YY6hAEK/3EUs4UpB8la1RfdRpeGsFHkWsA==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec"
+      }
+    },
+    {
+      "packagePath": "node_modules/vue",
+      "name": "vue",
+      "lockedVersion": "3.5.43",
+      "installedVersion": "3.5.43",
+      "versionMatches": true,
+      "integrity": "sha512-o5qZoksdnjIKvW1srZ3ab7pcDNYAerBjRe54D0LBLfRdCYFrSgBHVXokMas35czQc0//lmx4/tuY4ZNQ+Rf2Ng==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "1bb85cc9b13b81ef41c81c51866172fc345e0503c86726a6755b796590b70175"
+      }
+    },
+    {
+      "packagePath": "node_modules/ws",
+      "name": "ws",
+      "lockedVersion": "8.21.0",
+      "installedVersion": "8.21.0",
+      "versionMatches": true,
+      "integrity": "sha512-Vsp28b7DRcimFQvrqu2Wek3z1iYxDCWqHYB8Qsnk/S4RfaCQzPGPyBNuVjJV3cd6UiKtUtp6sNM77gWvzcCH+g==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "2b29dcfe0d6471f7e8c92c5fb38c9f93edee10330937055440192f1832b1ecef"
+      }
+    },
+    {
+      "packagePath": "node_modules/zod",
+      "name": "zod",
+      "lockedVersion": "4.6.7",
+      "installedVersion": "4.6.7",
+      "versionMatches": true,
+      "integrity": "sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "3f1189b28e3866e0d979968d466b78f813f76827cfdca1fbb124cc0a5c8841f8"
+      }
+    }
+  ]
+}

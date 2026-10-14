@@ -1,114 +1,45 @@
 # Testing
 
-Two suites. The unit tests run anywhere in a second. The end-to-end tests run
-the bridge for real on a private devnet: both contracts, a test orchestrator,
-and the page in a browser.
+Install the committed dependency graph with `npm ci`. Use a supported Node release from `package.json`; CI targets Node 22, 24 and 26. Local qualification and hosted results are separate.
 
 ```sh
-npm test               # unit
-npm run lab:up         # start the devnet and anvil (first run builds znnd)
-npm run test:e2e       # end to end, several minutes
-npm run lab:down       # stop it
+npm run lint
+npm run typecheck
+npm run test:coverage
+npm audit --audit-level=low
+npm run build
+CHROME_PATH=<pinned-headless-shell> npm run test:browser
 ```
 
-## Unit tests
+## Deterministic source checks
 
-`tests/unit/`, vitest, no network. They hold fixtures read from mainnet, so
-the encodings are checked against what the chain accepted rather than against
-themselves.
+`tests/unit` covers recorded ABI/signature vectors, exact fees/amounts, recipient/referral eligibility, complete bounded history, schema/RPC failure handling, retired node/account responses, fail-closed route/health authority, journal persistence and original-outcome recovery, EVM receipt identity, compiler-cache inputs and retry-safe lab publications. Fixtures contain public test accounts; no wallet or production write is used.
 
-| File | Checks |
-|---|---|
-| `abi.test.ts` | Method ids equal the selectors on the mainnet bridge chain; `WrapToken` and `Redeem` call data byte for byte equal to mainnet blocks; liquidity calls |
-| `signatures.test.ts` | A wrap signed by the mainnet orchestrators recovers to the bridge's TSS key through the app's message layout and `evmSignature` |
-| `referral.test.ts` | Codes equal the original app's; first referral wins; the unwrap suffix is the decoded address |
-| `core.test.ts` | Fees (against a real mainnet wrap), formatting, wrap and unwrap status, revert reasons, affiliate metadata, the plasma bot call, big-integer JSON |
-| `swap.test.ts` | Each router's request and the reading of its answer (shapes recorded 2026-10-13); a quote naming any contract but that router's, or another amount, is refused and not shopped elsewhere; KyberSwap on one chain, Across on two, LI.FI as the fallback; router availability; transfer status, time, prices |
-| `errors.test.ts` | Thrown errors as shown: viem's wallet rejection text becomes "Declined in wallet", wallet states name the remedy, a revert shows the contract's reason, anything else is one line of 80 characters |
-| `orchestrators.test.ts` | The health verdict: halted, key generation, stalled (mainnet as read on 2026-10-12), delayed, online, idle |
+Coverage thresholds apply to the selected safety modules listed in `vite.config.ts`, not the whole application. State ownership, orchestration and browser focus have additional targeted tests. A percentage is not a security proof.
 
-## End to end
+The journal retention regression creates and rejects 205 entries through the durable APIs. It has a twenty-second test budget because coverage instrumentation on shared CI runners can exceed the default five seconds. Its record-count and unresolved-operation assertions remain required.
 
-Mainnet cannot be used: its orchestrators stopped signing in August 2026, and
-a test should not move real funds. So `e2e/` brings up the whole bridge on a
-lab.
+## Offline browser qualification
 
-```mermaid
-sequenceDiagram
-  autonumber
-  participant T as Test or page
-  participant Z as Zenon lab
-  participant O as Test orchestrator
-  participant E as Anvil
+`tests/browser` mounts the actual Vue components and uses isolated providers. Outbound network requests are refused; the disconnected-wallet fallback is served by a loopback fixture. It checks all five views at 320/375/768/1024/1440 pixels in light/dark themes with connected/disconnected wallets, modal keyboard/focus behavior, reduced motion, strict amount/recipient checks, late original results, queued economic changes, reverted receipts, same-origin redirects and real cross-tab Web Locks.
 
-  T->>Z: WrapToken, signed with the lab key
-  Z-->>T: request id
-  Note over O: waits for finality
-  O->>Z: UpdateWrapRequest(id, signature)
-  T->>E: redeem, step 1
-  Note over E: redeemDelay blocks, mined on demand
-  T->>E: redeem, step 2
-  E-->>T: wZNN minted
-  T->>E: approve, unwrap("z1recipient&z1referrer")
-  E-->>O: Unwrapped log
-  O->>Z: UnwrapToken, and a second one for the referrer
-  Note over Z: redeemDelay momentums
-  T->>Z: Redeem
-  alt orchestrator stopped
-    Note over T: request stays unsigned, health reads stalled
-  else
-    Z-->>T: ZNN back, plus 1%
-  end
+Liquidity cases cover unavailable/substituted pools, reverted approvals, LP completion postconditions, zero/halted/unavailable programs, source changes before a queued stake, complete paginated stake history, expiry cancellation and submitted-only collection. These fixtures do not establish DEX contract behavior, real LP minting, stake economics or a production reward cycle. Results and screenshots are written to ignored `.browser-results`.
+
+Browser launch keeps Chromium's default sandbox. On Ubuntu 24.04, the qualification workflow loads a root-owned AppArmor profile granting user namespaces to the exact pinned headless-shell executable and retains that profile with its evidence artifact. A browser launch failure fails qualification. Local Linux environments may need the corresponding [Chromium namespace configuration](https://chromium.googlesource.com/chromium/src/+/main/docs/security/apparmor-userns-restrictions.md).
+
+## Isolated protocol and page checks
+
+Follow the [pinned lab setup](../e2e/README.md), require successful readiness, then run:
+
+```sh
+npm run test:e2e
 ```
 
-### The lab (`e2e/lab/`)
+The suites run sequentially because administrator/orchestrator/user fixture sends share one account. They exercise wrap, two delayed EVM redeems, unwrap/referral, Zenon redemption and exact balances, then the actual page with its node/contract reads and injected wallet adapters. `built.e2e.test.ts` also builds the devnet production bundle, serves its actual HTML/CSP and checks routes, absence of development stores and external requests, and mobile layout with disconnected wallets. It records loaded initial JavaScript sizes and hashes separately from later route loads. The lab asserts loopback endpoints and chain IDs before writes. No mainnet funds are used.
 
-`lab.sh` builds and runs it with Docker. It follows the syrius-extension lab:
-its own compose project, containers, subnet, ports and chain identifier, so it
-shares nothing with another devnet on the machine.
+Protocol delay tests disable interval mining and control EVM blocks explicitly; UI receipt waits restore interval mining. Zenon publication acknowledges a momentum with depth three and waits until a receive source is included before signing. Unknown publications retain the exact signed block and stop replacements. Preserve a failed run before creating a fresh isolated chain.
 
-| | |
-|---|---|
-| Zenon | go-zenon's five-node devnet, chain 322, RPC on `127.0.0.1:46997` (HTTP) and `46998` (WS) |
-| EVM | anvil, chain 31337, on `127.0.0.1:46545`, a fresh chain every start |
-| Image | `bridge-lab-znnd:<go-zenon commit>-bridge` |
-
-A stock go-zenon devnet cannot run the bridge, for two reasons, and the lab
-changes exactly those:
-
-1. The `bridge-liq` spork is off in the devnet genesis. `make-assets.mjs` turns
-   it on from genesis, as `az` and `htlc` already are.
-2. The bridge administrator is an address compiled into znnd, and its time
-   challenges last one and two days. `znnd/devnet_bridge.go` is added to the
-   build: when `ZNN_DEVNET_BRIDGE=1` it takes the administrator from
-   `ZNN_BRIDGE_ADMIN` and shortens the delays to one and two momentums. This
-   is what go-zenon's own bridge tests do in process. The file is not part of
-   go-zenon and does nothing without the variable.
-
-`GO_ZENON_DIR` points at the go-zenon checkout (default `../go-zenon`, beside
-this repository).
-
-### What runs
-
-`e2e/setup.ts` deploys HyperCore's `bridge.sol` (vendored unchanged in
-`e2e/contracts/`, the contract mainnet runs) and a mintable test token on
-anvil, registers the token and the TSS key, then on Zenon sets the
-orchestrator info, the TSS key, the network and the ZNN pair. Each step is
-skipped when the chain already has it.
-
-`e2e/orchestrator.ts` is a single-key stand-in for the orchestrator network.
-It signs the same messages and makes the same contract calls; only the
-threshold ceremony is missing. Its message code is the code the unit tests
-check against a mainnet signature.
-
-| File | Covers |
-|---|---|
-| `bridge.e2e.test.ts` | Wrap and both EVM redeems, unwrap through a referral with both Zenon redeems, exact balances on both chains, every status the app derives on the way, and the health verdict going stalled and back |
-| `ui.e2e.test.ts` | The page in headless Chrome with a mock Syrius provider and a mock EIP-6963 wallet: connect, terms, wrap, redeem twice from Activity, approve and unwrap, redeem on Zenon, Stats online, no console errors, no overflow |
-
-The protocol test builds every block and transaction with the app's own
-functions and reads every state through the app's own client, so a failure
-there is a failure in what the page would do.
+The one-key orchestrator does not exercise distributed TSS. Native and Docker evidence are separate; a native pass cannot qualify Docker. Real wallet/platform tests, a full pool-to-LP-to-stake lifecycle, independent review, hosted CI and deployment/operator acceptance remain [external gates](QUALIFICATION.md).
 
 ### Swaps on a mainnet fork (`e2e/swap.fork.mjs`)
 
@@ -117,10 +48,11 @@ page in headless Chrome with a mock EIP-6963 wallet that forwards to an anvil
 fork of Ethereum, so the quoted transactions really execute:
 
 ```
-docker run -d --rm --name swap-fork -p 46599:8545 --entrypoint anvil \
-  ghcr.io/foundry-rs/foundry:stable --host 0.0.0.0 --chain-id 1 \
-  --fork-url https://ethereum-rpc.publicnode.com
-npm run test:swap
+docker run -d --rm --name swap-fork -p 127.0.0.1:46599:8545 --entrypoint anvil \
+  ghcr.io/foundry-rs/foundry:v1.8.5@sha256:32c8ea9ef052a440cb1620175987a3f49eff8b068a0c6a3d09ebf7f5f9a0e043 --host 0.0.0.0 --chain-id 1 \
+  --accounts 0 --block-time 1 --no-storage-caching \
+  --allow-origin http://127.0.0.1:5231 --fork-url https://ethereum-rpc.publicnode.com
+SWAP_FORK=http://127.0.0.1:46599 CHROME_PATH=<pinned-fixture-browser> npm run test:swap
 docker rm -f swap-fork
 ```
 
@@ -132,14 +64,37 @@ to BNB through Across. It calls the live router APIs, so it is not part of
 `npm test`, and arrival on the other chain is beyond what a fork can show.
 Start a fresh fork for each run: the routers quote live prices, and an old
 fork drifts from them.
+Keep mining enabled so receipt checks can observe their required confirmations.
+The fixture waits for the exact original hash to be confirmed in the journal
+before starting another publication. It stops on an unresolved original operation.
 
-### Limits
 
-- One key plays administrator, orchestrator and user on Zenon (devnet index
-  1, the only account with plasma in genesis), so sends are serialised.
-- Momentums take about 15 s on Docker Desktop. The suites take several
-  minutes each.
-- The liquidity contract and the Uniswap pool are not in the lab; those flows
-  are covered by unit tests of their call data only.
-- The real Syrius extension and real EVM wallets are not driven. The mocks
-  follow their provider interfaces.
+The fork script is inherited upstream integration tooling. It was not run as part of the offline or two-chain devnet qualification. Use a fresh isolated fork, the pinned browser and public fixture accounts; never connect a real funded wallet. Router API success or a local fork receipt does not prove destination-chain delivery.
+
+The fixture refuses a nonliteral-loopback endpoint, credentials/routing data,
+redirects, the wrong Anvil version or chain, and missing fork metadata before
+fixture writes. It also requires the pinned browser. The mock wallet forwards to
+the same bounded Node RPC adapter; responses are paired to their request and capped
+at 256 KiB with an eight-second deadline. Browser and Vite cleanup are both attempted
+on failure. Use only a fresh fork owned by this qualification run; endpoint/client
+identity alone does not establish ownership of an existing local service.
+
+The preflight follows the pinned Anvil schema: execution identity is in
+`anvil_nodeInfo.environment.chainId`; `anvil_metadata.forkedNetwork` must identify
+Ethereum chain 1, the same fork block number and a valid block hash. A local
+`--chain-id 1` override does not establish the fork source's chain. See the
+[v1.8.5 RPC handlers](https://github.com/foundry-rs/foundry/blob/v1.8.5/crates/anvil/src/eth/api.rs).
+
+Set `BROWSER_PROFILE_DIR` and `QUALIFICATION_CACHE_DIR` to the owned task's private
+locations. Preserve an interrupted journal/profile and actual exit evidence. A
+missing fork, tool or browser is `NOT_RUN`, not a skipped successful integration.
+Browser fixture servers and compiled fixture builds do not load local dotenv
+files. Supply fixture overrides explicitly through the process environment.
+
+The offline swap component case uses router and wallet stand-ins, delays the original wallet reply, changes the selected account, and verifies that the durable record retains the original payload, amount, account and hash. Parser regressions reject expired/malformed replies, unsafe amounts and malformed calldata. `readiness.test.ts` rejects a node returning the same genesis hash when a recent height was requested, as well as missing, wrong-chain and divergent responses.
+
+The browser runner accepts `BROWSER_RESULTS_DIR`, `BROWSER_PROFILE_DIR` and `QUALIFICATION_CACHE_DIR` for private owned qualification locations. Reports and screenshots remain private until explicitly reviewed for export. Qualification storage and fixture caches must not overwrite historical evidence.
+
+Router replies are streamed with a 256 KiB body limit, integer amounts must fit uint256, and calldata is bounded to leave room for durable quote metadata. The private operation payload retains the chosen assets, recipient, amount, minimum output and expiry after reload; these are intended quote values, not authenticated destination results.
+
+Qualification retains each Node matrix job's mainnet `dist` as a separate artifact. Compare their source/lock identities and canonical asset-tree hashes; runtime-specific release manifests are expected to differ. Artifact upload grants no Pages deployment rights. A fork lacking the Pages workflow on its default branch cannot dispatch that workflow; do not move or publish a default branch to bypass this refusal.

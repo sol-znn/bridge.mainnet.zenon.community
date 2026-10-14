@@ -87,7 +87,11 @@ export async function requestAccounts(p: Eip1193Provider): Promise<string[]> {
 }
 
 export async function chainIdOf(p: Eip1193Provider): Promise<number> {
-  return Number(await p.request({ method: 'eth_chainId' }))
+  const value = await p.request({ method: 'eth_chainId' })
+  if (!['string', 'number'].includes(typeof value)) throw new Error('Wallet chain identity is unavailable')
+  const id = Number(value)
+  if (!Number.isSafeInteger(id) || id <= 0) throw new Error('Wallet chain identity is unavailable')
+  return id
 }
 
 export async function switchChain(
