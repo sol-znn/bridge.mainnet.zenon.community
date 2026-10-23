@@ -3,7 +3,7 @@
 // The menu behind it holds each wallet's address and its controls, and, one
 // level further in, which node the page reads from.
 import { computed, ref, watch } from 'vue'
-import { Wallet, LogOut, Repeat, Download, Loader2, ChevronDown, Server } from 'lucide-vue-next'
+import { Wallet, LogOut, Repeat, Download, Loader2, ChevronDown, Server } from '@lucide/vue'
 import Modal from './Modal.vue'
 import Address from './Address.vue'
 import TokenIcon from './TokenIcon.vue'

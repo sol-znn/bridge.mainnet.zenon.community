@@ -10,15 +10,23 @@ import { privateKeyToAccount } from 'viem/accounts'
 import { keccak256, toBytes } from 'viem'
 import { Account } from './wallet.ts'
 import { publishBlock } from './publish.ts'
+import { archiveRejectedPublication } from './publication-journal.ts'
 import { ZenonClient } from '../../src/znn/client.ts'
 import { ZenonApi } from '../../src/znn/api.ts'
 import type { BlockSpec } from '../../src/znn/block.ts'
 import { evmAddressOfPublicKey, tssPublicKey } from './messages.ts'
 import { EMPTY_ADDRESS } from '../../src/znn/primitives.ts'
+import fs from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { blockTemplate, type BlockJson } from '../../src/znn/block.ts'
 
 export const ZNN_HTTP = process.env.LAB_RPC || 'http://127.0.0.1:46997'
 export const ZNN_WS = process.env.LAB_WS || 'ws://127.0.0.1:46998'
 export const EVM_RPC = process.env.LAB_EVM || 'http://127.0.0.1:46545'
+for (const endpoint of [ZNN_HTTP, ZNN_WS, EVM_RPC]) {
+  const url = new URL(endpoint)
+  if (!['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname) || url.username || url.password) throw new Error('Lab endpoints must be isolated loopback addresses')
+}
 export const ZNN_CHAIN_ID = 322
 export const EVM_CHAIN_ID = 31337
 export const NETWORK_CLASS = 2
@@ -53,11 +61,24 @@ export const evmAdminWallet: WalletClient = createWalletClient({ chain: anvil, t
 export const evmUserWallet: WalletClient = createWalletClient({ chain: anvil, transport: http(EVM_RPC), account: evmUser })
 
 export async function mine(blocks: number): Promise<void> {
+  await assertLab()
   await evmPublic.request({ method: 'anvil_mine' as never, params: [`0x${blocks.toString(16)}`] as never })
+}
+
+/** Deterministic protocol delay boundaries; UI receipt waits use interval mining. */
+export async function evmClock(intervalSeconds: number): Promise<void> {
+  await assertLab()
+  await evmPublic.request({ method: 'evm_setIntervalMining' as never, params: [intervalSeconds] as never })
+  await evmPublic.request({ method: 'evm_setAutomine' as never, params: [intervalSeconds === 0] as never })
 }
 
 export const znn = new ZenonClient(ZNN_HTTP)
 export const zapi = new ZenonApi(znn)
+
+export async function assertLab(): Promise<void> {
+  const [evmChain, momentum] = await Promise.all([evmPublic.getChainId(), znn.frontierMomentum()])
+  if (evmChain !== EVM_CHAIN_ID || momentum.chainIdentifier !== ZNN_CHAIN_ID) throw new Error('Lab chain identity does not match; refusing fixture writes')
+}
 
 export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
@@ -89,20 +110,51 @@ interface ConfirmedBlock {
 // One account sends everything, so sends are serialised: a second block built
 // before the first is confirmed would reuse its height.
 let chain: Promise<unknown> = Promise.resolve()
+const publicationFile = fileURLToPath(new URL('../.state/publication.json', import.meta.url))
+function publicationIdentity(spec: BlockSpec, account: Account) {
+  const b = blockTemplate(spec, ZNN_CHAIN_ID)
+  return JSON.stringify([account.address, b.blockType, b.toAddress, b.amount, b.tokenStandard, b.data, b.fromBlockHash])
+}
 
 /** Signs, publishes and waits for a momentum to confirm the block. */
 export function send(spec: BlockSpec, account: Account = zAdmin): Promise<string> {
   const job = async () => {
-    const block = await publishBlock(znn, account, ZNN_CHAIN_ID, spec)
+    await assertLab()
+    const identity = publicationIdentity(spec, account)
+    let block: BlockJson
+    if (fs.existsSync(publicationFile)) {
+      const pending = JSON.parse(fs.readFileSync(publicationFile, 'utf8')) as { identity: string; block: BlockJson }
+      if (pending.identity !== identity || pending.block.chainIdentifier !== ZNN_CHAIN_ID || pending.block.address !== account.address) throw new Error('Earlier fixture publication is unresolved; retain and reconcile its exact hash')
+      block = pending.block
+    } else {
+      let preparedBlock: BlockJson | undefined
+      try {
+        block = await publishBlock(znn, account, ZNN_CHAIN_ID, spec, {}, (prepared) => {
+          fs.mkdirSync(fileURLToPath(new URL('../.state/', import.meta.url)), { recursive: true })
+          fs.writeFileSync(publicationFile, JSON.stringify({ identity, block: prepared }), { flag: 'wx' })
+          preparedBlock = prepared
+        })
+      } catch (error) {
+        if (preparedBlock) archiveRejectedPublication(publicationFile, identity, preparedBlock, error)
+        throw error
+      }
+    }
     await until(`block ${block.hash.slice(0, 8)} to confirm`, async () => {
       const b = await znn.callOrNull<ConfirmedBlock>('ledger.getAccountBlockByHash', [block.hash])
       return b?.confirmationDetail?.momentumHeight ? b : null
     })
+    fs.unlinkSync(publicationFile)
     return block.hash
   }
   const next = chain.then(job, job)
   chain = next.catch(() => undefined)
   return next
+}
+
+/** Drain original fixture jobs before closing a browser or retiring a worker. */
+export async function drainPublications(): Promise<void> {
+  await chain
+  if (fs.existsSync(publicationFile)) throw new Error('Fixture publication remains unresolved; preserve its original hash')
 }
 
 /** Receives everything waiting for `account` (a redeem's ZNN arrives as an unreceived block). */

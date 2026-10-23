@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { AlertTriangle, Info, XCircle, Gift, X } from 'lucide-vue-next'
+import { AlertTriangle, Info, XCircle, Gift, X } from '@lucide/vue'
 const props = defineProps<{ tone: 'warn' | 'danger' | 'wait' | 'new'; dismissable?: boolean }>()
 const emit = defineEmits<{ dismiss: [] }>()
 const ICONS = { warn: AlertTriangle, danger: XCircle, wait: Info, new: Gift }

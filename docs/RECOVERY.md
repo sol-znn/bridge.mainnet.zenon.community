@@ -1,0 +1,27 @@
+# Original operation recovery
+
+Swap approvals and sends retain their original transaction fields plus the quoted assets, recipient, amount, minimum output and expiry as private recovery evidence. A confirmed swap journal entry authenticates the source transaction only. The stored quote and router-reported status do not prove delivery on the receiving chain. Preserve this metadata with the original hash; do not publish wallet exports or create a replacement signature to compensate for an uncertain destination outcome.
+
+The interface saves the chosen chain, account, contract, calldata and amount in `bridge.operations.v1` before requesting a wallet signature. Secure-context Web Locks serialize wallet invocation across tabs; browsers without that support cannot sign. Other-tab records are merged, and unreviewed unresolved records pause new sends from that account and chain after a lock is released or a tab closes. The browser stores transaction evidence, never private keys or seed phrases.
+
+A wallet timeout, lost response or missing receipt does not prove rejection. Keep the original wallet operation and its exact hash. Do not approve a replacement, change nonce, re-sign, or infer a hash from a similar address-history entry. A late result is accepted only from the original request and is recorded against the original intent even if the current screen, account or chain has changed.
+
+For an `unknown` operation with no reported hash, Activity also offers **Keep
+record and allow a different operation** after at least one minute. Close the
+original wallet prompt, check the wallet's pending transactions and history, then
+explicitly acknowledge that its outcome may still be pending. Another tab's
+active publication lock prevents this review. The action preserves the original
+unknown record, including across reload, and permits a different request. It does
+not prove nonpublication or mark the operation rejected or completed. The same
+encoded request and the same recorded swap economic intent remain blocked even
+with a fresh quote or different router. A later original hash restores the account
+pause until that exact transaction is reconciled. Known hashes and mismatches
+cannot use this path, and time passing alone never unlocks an account.
+
+In Activity, **Original operations** shows unresolved records. Select the original Zenon node/chain for a Zenon operation, or use an EVM reader on the original chain. If a hash was not returned, obtain the exact hash from the original wallet operation and enter it there. Reconciliation checks the transaction's account, chain and chosen fields. Zenon evidence must also match its computed hash, public key, signature and confirmation; EVM evidence must have a matching receipt on a canonical block and at least two confirmations. This short receipt check is not proof of bridge-service completion or irreversible network finality.
+
+`submitted` means an exact hash is known. `unknown` means the outcome needs reconciliation. `mismatch` means wallet evidence differs from the chosen fields and requires independent wallet/maintainer review; the interface cannot automatically clear it. `confirmed`, `reverted` and explicit wallet rejection resolve publication, but only the relevant contract state and bridge request can establish a transfer's later progress. A successful approval must establish allowance; liquidity completion must establish an LP balance increase; EVM redemption must establish its expected step.
+
+Unreadable storage is preserved and sending is paused when the operation journal cannot be restored or saved. Keep a private export of the affected browser storage and original wallet evidence for recovery. Do not delete it to remove the warning. Do not publish that export: it can contain account addresses, amounts, recipients and endpoint details. Old activity records with no stored Zenon chain remain scoped to the configured build chain; manually establish their original chain before using them elsewhere.
+
+History is bounded to 100 pages of 100 entries per address. Changing counts or incomplete pages produce an explicit error. Exact operation reconciliation works independently of complete address history. Nonterminal identities are retained; only old terminal activity/journal records are bounded. Chain/account changes invalidate action readiness and cached reads. A fresh read is required before redeeming.

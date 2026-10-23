@@ -25,10 +25,11 @@
 //     and no window. Nothing was shown and nothing was signed, so the request
 //     is held here until the 30 s have passed and then made again.
 //   - The wallet prepares the block once, shows it, and signs exactly that.
-//     If the account's frontier moves while the window is open the node
-//     refuses the block, and the call is made again.
+//     Other failures retain the original operation for exact reconciliation.
 
 import type { BlockJson } from '../znn/block.ts'
+import { NotSubmittedError } from '../core/errors.ts'
+import { isUserAddress } from '../znn/primitives.ts'
 import { legacyPresent, legacyConnect, legacySend } from './syriusLegacy.ts'
 
 export interface ZenonProvider {
@@ -93,7 +94,7 @@ function translate(err: unknown): WalletError {
   if (err instanceof WalletError) return err
   const raw = err as { code?: number; message?: string } | undefined
   const code = typeof raw?.code === 'number' ? raw.code : 0
-  const detail = (raw?.message ?? String(err)).trim()
+  const detail = String(raw?.message ?? err).trim()
   switch (code) {
     case 4001:
       return new WalletError(code, 'declined in Syrius')
@@ -178,6 +179,8 @@ let lastAskedAt = 0
 export interface PromptOptions {
   /** Called once a second while a request is being held back, with the seconds left. */
   onHold?: (secondsLeft: number) => void
+  beforePrompt?: () => void
+  account?: string
 }
 
 /**
@@ -189,8 +192,10 @@ async function prompting<T>(ask: () => Promise<T>, options: PromptOptions = {}):
     const previous = lastAskedAt
     lastAskedAt = Date.now()
     try {
+      try { options.beforePrompt?.() } catch (error) { throw new NotSubmittedError(error instanceof Error ? error.message : 'Operation context changed before the wallet request') }
       return await ask()
     } catch (err) {
+      if (err instanceof NotSubmittedError) throw err
       const code = (err as { code?: number } | undefined)?.code
       if (code !== -32005 || attempt >= 2) throw translate(err)
       // The cooldown runs from when the last window opened, which is when it
@@ -251,9 +256,10 @@ export async function readState(): Promise<WalletState> {
     ask(() => p.getChainId(), null),
     ask(() => p.getNodeUrl(), null),
   ])
-  state.address = accounts?.[0] ?? null
-  state.chainId = chainId === null || chainId === undefined ? null : Number(chainId)
-  state.nodeUrl = nodeUrl ?? null
+  state.address = Array.isArray(accounts) && typeof accounts[0] === 'string' && isUserAddress(accounts[0]) ? accounts[0] : null
+  const id = chainId === null || chainId === undefined ? 0 : Number(chainId)
+  state.chainId = Number.isSafeInteger(id) && id > 0 ? id : null
+  state.nodeUrl = typeof nodeUrl === 'string' && nodeUrl.length <= 2048 ? nodeUrl : null
   return state
 }
 
@@ -261,6 +267,7 @@ export function connect(options: PromptOptions = {}): Promise<WalletState> {
   return exclusive(async () => {
     if (isLegacy()) {
       const g = await legacyConnect()
+      if (!isUserAddress(g.address) || !Number.isSafeInteger(g.chainId) || g.chainId <= 0 || typeof g.nodeUrl !== 'string' || g.nodeUrl.length > 2048) throw new WalletError(-32603, 'Legacy wallet identity is unavailable')
       legacyState = { present: true, protocol: '1', extensionVersion: null, address: g.address, chainId: g.chainId, nodeUrl: g.nodeUrl, canSignMessage: false }
       return legacyState
     }
@@ -288,6 +295,23 @@ export interface SentBlock {
   block: Partial<BlockJson> | null
 }
 
+export class WalletOutcomeError extends WalletError {
+  readonly reportedHash?: string
+  constructor(message: string, hash?: string) {
+    super(-32603, `${message}. The original operation must be reconciled before sending again.`)
+    this.reportedHash = typeof hash === 'string' && /^[0-9a-f]{64}$/i.test(hash) ? hash.toLowerCase() : undefined
+  }
+}
+
+function checkedResult(template: BlockJson, hash: unknown, block: Partial<BlockJson> | null, account?: string): SentBlock {
+  if (typeof hash !== 'string' || !/^[0-9a-f]{64}$/i.test(hash)) throw new WalletOutcomeError('Wallet publication outcome is unknown')
+  if (block !== null && (typeof block !== 'object' || Array.isArray(block) || block.hash !== undefined && typeof block.hash !== 'string')) throw new WalletOutcomeError('Wallet response contains a malformed block', hash)
+  if (signedBlockDiffers(template, block).length || block?.address && account && block.address !== account || block?.hash && block.hash.toLowerCase() !== hash.toLowerCase()) {
+    throw new WalletOutcomeError('Wallet response does not match the original operation', hash)
+  }
+  return { hash: hash.toLowerCase(), block }
+}
+
 /**
  * Hands a complete template to the extension to fill in, show, sign and
  * publish. Resolves when the wallet has published; the block is then on its
@@ -296,16 +320,16 @@ export interface SentBlock {
 export function sendAccountBlock(template: BlockJson, options: PromptOptions = {}): Promise<SentBlock> {
   return exclusive(async () => {
     if (isLegacy()) {
+      try { options.beforePrompt?.() } catch (error) { throw new NotSubmittedError(error instanceof Error ? error.message : 'Operation context changed before the wallet request') }
       const signed = (await legacySend(plain(template))) as Partial<BlockJson>
-      if (!signed?.hash) throw new WalletError(-32603, 'Syrius published the block but reported no hash for it')
-      return { hash: String(signed.hash), block: signed }
+      return checkedResult(template, signed?.hash, signed, options.account)
     }
-    const p = provider()
+    let p: ZenonProvider
+    try { p = provider() } catch { throw new NotSubmittedError('No Zenon wallet is available') }
     const result: SendAccountBlockResult = await prompting(() => p.sendAccountBlock(plain(template)), options)
     const block = result?.block ?? result?.signedTransaction ?? null
     const hash = result?.hash ?? block?.hash
-    if (!hash) throw new WalletError(-32603, 'Syrius published the block but reported no hash for it')
-    return { hash: String(hash), block }
+    return checkedResult(template, hash, block, options.account)
   })
 }
 

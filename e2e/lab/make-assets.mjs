@@ -9,8 +9,8 @@
 // - The bridge-liq spork is active from genesis, as az and htlc already are.
 // - The node addresses in each config.json move to the lab's subnet.
 //
-// Everything else is go-zenon's, so its README's accounts hold: the devnet
-// mnemonic's index 1 has 10,000 ZNN and 100,000 QSR and two genesis fuses.
+// The index-1 fixture has 10,000 ZNN and 70,000 spendable QSR. The other
+// 30,000 QSR back the declared genesis fusions in the Plasma contract.
 // After syrius-extension/tools/devnet/lab/make-assets.js.
 import fs from 'node:fs'
 import path from 'node:path'
@@ -43,6 +43,30 @@ const copy = (from, to) => {
 const genesis = JSON.parse(fs.readFileSync(path.join(source, 'genesis.json'), 'utf8'))
 genesis.ChainIdentifier = chainIdentifier
 genesis.ExtraData = 'BRIDGE LAB'
+// Back every genesis fusion with the Plasma contract balance while preserving
+// total QSR supply. The pinned fixture previously declared fusions without
+// putting their QSR in Plasma; current genesis validation rejects that state.
+const QSR = 'zts1qsrxxxxxxxxxxxxxmrhjll'
+const PLASMA = 'z1qxemdeddedxplasmaxxxxxxxxxxxxxxxxsctrp'
+const sums = new Map()
+for (const fusion of genesis.PlasmaConfig.Fusions) {
+  if (!Number.isSafeInteger(fusion.amount) || fusion.amount < 0) throw new Error('Unsafe fixture fusion amount')
+  sums.set(fusion.owner, (sums.get(fusion.owner) ?? 0n) + BigInt(fusion.amount))
+}
+const totalFusion = [...sums.values()].reduce((a, b) => a + b, 0n)
+if (totalFusion > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error('Unsafe fixture fusion total')
+let plasma = genesis.GenesisBlocks.Blocks.find((block) => block.Address === PLASMA)
+if (!plasma) { plasma = { Address: PLASMA, BalanceList: {} }; genesis.GenesisBlocks.Blocks.push(plasma) }
+const existing = BigInt(plasma.BalanceList[QSR] ?? 0)
+if (existing === 0n && totalFusion > 0n) {
+  for (const [owner, amount] of sums) {
+    const block = genesis.GenesisBlocks.Blocks.find((block) => block.Address === owner)
+    const balance = BigInt(block?.BalanceList[QSR] ?? 0)
+    if (!block || balance < amount || amount > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error('Fixture fusion owner cannot back its QSR')
+    block.BalanceList[QSR] = Number(balance - amount)
+  }
+  plasma.BalanceList[QSR] = Number(totalFusion)
+} else if (existing !== totalFusion) throw new Error('Fixture Plasma balance does not match declared fusions')
 const spork = genesis.SporkConfig.Sporks.find((s) => s.id === BRIDGE_SPORK)
 if (!spork) throw new Error('the source genesis has no bridge-liq spork')
 spork.activated = true

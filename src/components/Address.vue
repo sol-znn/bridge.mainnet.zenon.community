@@ -2,7 +2,7 @@
 // An address or hash: shortened, full value on hover, copy, and an explorer
 // link when there is one.
 import { ref } from 'vue'
-import { Copy, Check, ExternalLink } from 'lucide-vue-next'
+import { Copy, Check, ExternalLink } from '@lucide/vue'
 import { shorten } from '../core/format.ts'
 
 const props = withDefaults(defineProps<{ value: string; href?: string; head?: number; tail?: number; copy?: boolean }>(), {

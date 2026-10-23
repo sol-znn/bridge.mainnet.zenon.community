@@ -73,17 +73,35 @@ export const sameAsset = (a: SwapAsset | null, b: SwapAsset | null) =>
   !!a && !!b && a.chainId === b.chainId && a.address.toLowerCase() === b.address.toLowerCase()
 export const assetKey = (a: SwapAsset) => `${a.chainId}:${a.address.toLowerCase()}`
 
+interface ApiBody {
+  message?: string
+  data?: { amountOut?: unknown; data?: unknown; routerAddress?: unknown; transactionValue?: unknown; routeSummary?: unknown }
+  swapTx?: { to?: unknown; data?: unknown; value?: unknown }
+  inputAmount?: unknown; expectedOutputAmount?: unknown; minOutputAmount?: unknown; expectedFillTime?: unknown; quoteExpiryTimestamp?: unknown
+  checks?: { allowance?: { spender?: unknown } }; fees?: { total?: { amountUsd?: unknown } }
+  estimate?: { toAmount?: unknown; toAmountMin?: unknown; approvalAddress?: unknown; executionDuration?: unknown; feeCosts?: { amountUSD?: unknown }[] }
+  transactionRequest?: { to?: unknown; data?: unknown; value?: unknown }
+  toolDetails?: { name?: unknown }; tool?: unknown; chains?: unknown[]
+  status?: unknown; priceUSD?: unknown
+}
+const transactionData = (data: unknown): data is `0x${string}` => typeof data === 'string' && data.length <= 30_000 && /^0x(?:[a-fA-F0-9]{2}){4,}$/.test(data)
+const positiveOutput = (output: bigint, minimum: bigint) => output > 0n && minimum > 0n && minimum <= output
+const routerFetch = (fetcher: typeof fetch): typeof fetch => (url, init) => fetcher(url, { ...init, signal: AbortSignal.timeout(8000) })
+
 const big = (v: unknown): bigint | null => {
   try {
-    return typeof v === 'string' || typeof v === 'number' ? BigInt(v) : null
+    if (!(typeof v === 'string' && /^(?:0x[0-9a-fA-F]{1,64}|[0-9]{1,78})$/.test(v) || typeof v === 'number' && Number.isSafeInteger(v) && v >= 0)) return null
+    const value = BigInt(v)
+    return value < 2n ** 256n ? value : null
   } catch {
     return null
   }
 }
-const no = (body: any, fallback = 'No route'): QuoteResult => ({ ok: false, message: typeof body?.message === 'string' ? body.message : fallback })
+const no = (body: ApiBody | null, fallback = 'No route'): QuoteResult => ({ ok: false, message: typeof body?.message === 'string' ? body.message : fallback })
 
 /** The checks every router's answer passes before it becomes a quote. */
 function guard(q: QuoteRequest, router: string, to: unknown, approval: unknown, value: bigint): string {
+  if (q.amount <= 0n || q.amount >= 2n ** 256n) return 'Quote requests an invalid amount'
   const r = router.toLowerCase()
   if (typeof to !== 'string' || to.toLowerCase() !== r) return 'Quote names an unknown contract'
   if (!isNative(q.from) && String(approval ?? '').toLowerCase() !== r) return 'Quote names an unknown contract'
@@ -102,11 +120,13 @@ export function kyberRouteUrl(c: SwapConfig, q: QuoteRequest): string {
 }
 
 /** Reads the built transaction. KyberSwap approves and sends to the same router. */
-export function parseKyber(c: SwapConfig, q: QuoteRequest, body: any, now = Date.now()): QuoteResult {
+export function parseKyber(c: SwapConfig, q: QuoteRequest, body: ApiBody | null, now = Date.now()): QuoteResult {
   const d = body?.data
   const toAmount = big(d?.amountOut)
-  if (!d || toAmount === null || typeof d.data !== 'string') return no(body)
-  const value = big(d.transactionValue ?? '0') ?? 0n
+  if (!d || toAmount === null) return no(body)
+  if (!transactionData(d.data)) return { ok: false, message: 'Quote contains invalid transaction data' }
+  if (!positiveOutput(toAmount, (toAmount * BigInt(10_000 - SLIPPAGE_BPS)) / 10_000n)) return { ok: false, message: 'Quote has invalid output amounts' }
+  const value = big(d.transactionValue ?? '0') ?? -1n
   const bad = guard(q, c.kyber.router, d.routerAddress, d.routerAddress, value)
   if (bad) return { ok: false, message: bad }
   return {
@@ -115,12 +135,12 @@ export function parseKyber(c: SwapConfig, q: QuoteRequest, body: any, now = Date
       request: q,
       provider: 'kyber',
       via: 'KyberSwap',
-      spender: d.routerAddress,
+      spender: d.routerAddress as `0x${string}`,
       toAmount,
       toAmountMin: (toAmount * BigInt(10_000 - SLIPPAGE_BPS)) / 10_000n,
       seconds: 0,
       feeUsd: null,
-      tx: { to: d.routerAddress, data: d.data, value },
+      tx: { to: d.routerAddress as `0x${string}`, data: d.data, value },
       expires: now + 60_000,
     },
   }
@@ -159,16 +179,19 @@ export function acrossUrl(c: SwapConfig, q: QuoteRequest): string {
   return `${c.across.api}/swap/approval?${p}`
 }
 
-export function parseAcross(c: SwapConfig, q: QuoteRequest, body: any, now = Date.now()): QuoteResult {
+export function parseAcross(c: SwapConfig, q: QuoteRequest, body: ApiBody | null, now = Date.now()): QuoteResult {
   const t = body?.swapTx
   const toAmount = big(body?.expectedOutputAmount)
   const toAmountMin = big(body?.minOutputAmount)
-  if (!t || toAmount === null || toAmountMin === null || typeof t.data !== 'string') return no(body)
+  if (!t || toAmount === null || toAmountMin === null) return no(body)
+  if (!transactionData(t.data)) return { ok: false, message: 'Quote contains invalid transaction data' }
+  if (!positiveOutput(toAmount, toAmountMin)) return { ok: false, message: 'Quote has invalid output amounts' }
   // Without strictTradeType the amount taken may differ from the one asked for.
   if (big(body.inputAmount) !== q.amount) return { ok: false, message: 'Quote asks for another amount' }
-  const bad = guard(q, c.across.router, t.to, body.checks?.allowance?.spender, big(t.value ?? '0') ?? 0n)
+  const bad = guard(q, c.across.router, t.to, body.checks?.allowance?.spender, big(t.value ?? '0') ?? -1n)
   if (bad) return { ok: false, message: bad }
-  const expiry = Number(body.quoteExpiryTimestamp) * 1000
+  const expiry = Number(body?.quoteExpiryTimestamp) * 1000
+  if (!Number.isSafeInteger(expiry) || expiry <= now + 5000) return { ok: false, message: 'Quote expired. Request a fresh quote.' }
   const fee = Number(body.fees?.total?.amountUsd)
   return {
     ok: true,
@@ -176,14 +199,14 @@ export function parseAcross(c: SwapConfig, q: QuoteRequest, body: any, now = Dat
       request: q,
       provider: 'across',
       via: 'Across',
-      spender: t.to,
+      spender: t.to as `0x${string}`,
       toAmount,
       toAmountMin,
       seconds: Number(body.expectedFillTime) || 0,
       feeUsd: Number.isFinite(fee) ? fee : null,
-      tx: { to: t.to, data: t.data, value: big(t.value ?? '0') ?? 0n },
+      tx: { to: t.to as `0x${string}`, data: t.data, value: big(t.value ?? '0') ?? -1n },
       // Across signs a quote for about half a minute.
-      expires: expiry > now ? expiry - 5_000 : now + 20_000,
+      expires: expiry - 5_000,
     },
   }
 }
@@ -209,13 +232,15 @@ export function lifiUrl(c: SwapConfig, q: QuoteRequest): string {
   return `${c.lifi.api}/quote?${p}`
 }
 
-export function parseLifi(c: SwapConfig, q: QuoteRequest, body: any, now = Date.now()): QuoteResult {
+export function parseLifi(c: SwapConfig, q: QuoteRequest, body: ApiBody | null, now = Date.now()): QuoteResult {
   const e = body?.estimate
   const t = body?.transactionRequest
   const toAmount = big(e?.toAmount)
   const toAmountMin = big(e?.toAmountMin)
-  if (!e || !t || toAmount === null || toAmountMin === null || typeof t.data !== 'string') return no(body)
-  const value = big(t.value ?? '0') ?? 0n
+  if (!e || !t || toAmount === null || toAmountMin === null) return no(body)
+  if (!transactionData(t.data)) return { ok: false, message: 'Quote contains invalid transaction data' }
+  if (!positiveOutput(toAmount, toAmountMin)) return { ok: false, message: 'Quote has invalid output amounts' }
+  const value = big(t.value ?? '0') ?? -1n
   const bad = guard(q, c.lifi.router, t.to, e.approvalAddress, value)
   if (bad) return { ok: false, message: bad }
   const tool = String(body.toolDetails?.name || body.tool || '')
@@ -225,12 +250,12 @@ export function parseLifi(c: SwapConfig, q: QuoteRequest, body: any, now = Date.
       request: q,
       provider: 'lifi',
       via: tool ? `LI.FI, ${tool}` : 'LI.FI',
-      spender: t.to,
+      spender: t.to as `0x${string}`,
       toAmount,
       toAmountMin,
       seconds: Number(e.executionDuration) || 0,
-      feeUsd: (Array.isArray(e.feeCosts) ? e.feeCosts : []).reduce((s: number, f: any) => s + (Number(f?.amountUSD) || 0), 0),
-      tx: { to: t.to, data: t.data, value },
+      feeUsd: (Array.isArray(e.feeCosts) ? e.feeCosts : []).reduce((s: number, f: { amountUSD?: unknown }) => s + (Number(f?.amountUSD) || 0), 0),
+      tx: { to: t.to as `0x${string}`, data: t.data, value },
       expires: now + 60_000,
     },
   }
@@ -245,12 +270,21 @@ async function quoteLifi(c: SwapConfig, q: QuoteRequest, fetcher: typeof fetch):
   return parseLifi(c, q, body)
 }
 
-async function json(res: Response): Promise<any> {
+async function json(res: Response): Promise<ApiBody | null> {
+  if (!res.body) return null
+  const reader = res.body.getReader(), decoder = new TextDecoder()
+  let size = 0, text = ''
   try {
-    return await res.json()
-  } catch {
-    return null
-  }
+    for (;;) {
+      const { value, done } = await reader.read()
+      if (done) break
+      size += value.byteLength
+      if (size > 256 * 1024) { await reader.cancel(); throw new Error('Quote response exceeds size limit') }
+      text += decoder.decode(value, { stream: true })
+    }
+    text += decoder.decode()
+    try { return JSON.parse(text) as ApiBody } catch { return null }
+  } finally { reader.releaseLock() }
 }
 
 const safely = (f: () => Promise<QuoteResult>): Promise<QuoteResult> =>
@@ -258,6 +292,7 @@ const safely = (f: () => Promise<QuoteResult>): Promise<QuoteResult> =>
 
 /** The cheaper router for the pair first; LI.FI only when that one has no route. */
 export async function fetchQuote(c: SwapConfig, q: QuoteRequest, fetcher: typeof fetch = fetch): Promise<QuoteResult> {
+  fetcher = routerFetch(fetcher)
   const first = q.from.chainId === q.to.chainId ? quoteKyber : quoteAcross
   const a = await safely(() => first(c, q, fetcher))
   if (a.ok) return a
@@ -270,6 +305,7 @@ export type SwapState = 'pending' | 'done' | 'failed'
 
 /** Where a cross-chain transfer stands. An unknown hash is pending: the routers learn of it late. */
 export async function fetchStatus(c: SwapConfig, provider: Provider, txHash: string, fromChain: number, toChain: number, fetcher: typeof fetch = fetch): Promise<SwapState> {
+  fetcher = routerFetch(fetcher)
   try {
     const url =
       provider === 'across'
@@ -277,7 +313,7 @@ export async function fetchStatus(c: SwapConfig, provider: Provider, txHash: str
         : `${c.lifi.api}/status?${new URLSearchParams({ txHash, fromChain: String(fromChain), toChain: String(toChain) })}`
     const res = await fetcher(url, { headers: { Accept: 'application/json' } })
     if (!res.ok) return 'pending'
-    const s = String((await res.json())?.status ?? '').toLowerCase()
+    const s = String((await json(res))?.status ?? '').toLowerCase()
     if (s === 'done' || s === 'filled') return 'done'
     return s === 'failed' || s === 'expired' || s === 'refunded' ? 'failed' : 'pending'
   } catch {
@@ -299,7 +335,7 @@ export interface RouterHealth {
  * transaction or counts against a quote limit.
  */
 export async function checkRouters(c: SwapConfig, sample: { from: SwapAsset; to: SwapAsset } | null, fetcher: typeof fetch = fetch): Promise<RouterHealth> {
-  const ask = async (url: string, good: (body: any) => boolean): Promise<boolean> => {
+  const ask = async (url: string, good: (body: ApiBody | null) => boolean): Promise<boolean> => {
     try {
       const res = await fetcher(url, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(8000) })
       return res.ok && good(await json(res))
@@ -329,10 +365,11 @@ export function swapEstimate(from: SwapAsset, to: SwapAsset, sourceBlockSeconds:
  * unkeyed). An estimate for display: nothing is priced or sent by it.
  */
 export async function fetchPrice(c: SwapConfig, a: SwapAsset, fetcher: typeof fetch = fetch): Promise<number | null> {
+  fetcher = routerFetch(fetcher)
   try {
     const res = await fetcher(`${c.lifi.api}/token?${new URLSearchParams({ chain: String(a.chainId), token: a.address })}`, { headers: { Accept: 'application/json' } })
     if (!res.ok) return null
-    const p = Number((await res.json())?.priceUSD)
+    const p = Number((await json(res))?.priceUSD)
     return Number.isFinite(p) && p > 0 ? p : null
   } catch {
     return null

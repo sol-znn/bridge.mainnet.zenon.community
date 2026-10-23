@@ -1,28 +1,29 @@
 <script setup lang="ts">
-import { computed, ref, watch, type Component } from 'vue'
-import { Sun, Moon, Ellipsis, ArrowLeftRight, History, Droplets, ChartNoAxesColumn, Gift, Github } from 'lucide-vue-next'
+import { computed, defineAsyncComponent, ref, watch, type Component } from 'vue'
+import { Sun, Moon, Ellipsis, ArrowLeftRight, History, Droplets, ChartNoAxesColumn, Gift, CodeXml } from '@lucide/vue'
 import WalletBar from './components/WalletBar.vue'
 import Starfield from './components/Starfield.vue'
 import Banner from './components/Banner.vue'
 import Address from './components/Address.vue'
 import StatusChip from './components/StatusChip.vue'
-import BridgeView from './views/BridgeView.vue'
-import ActivityView from './views/ActivityView.vue'
-import LiquidityView from './views/LiquidityView.vue'
-import StatsView from './views/StatsView.vue'
-import AffiliateView from './views/AffiliateView.vue'
 import zenonMark from './assets/zenon.svg'
 import { route, ROUTES, go, type Route } from './state/router.ts'
 import { theme, toggleTheme } from './state/theme.ts'
 import { node, syrius, wrongZenonChain, hostOf, chainId, networkLabel, requestWalletNode, walletNode } from './state/zenon.ts'
-import { bridge, bridgeDown } from './state/bridge.ts'
+import { bridge, bridgeDown, transferBlocker } from './state/bridge.ts'
 import { referrer, clearReferral } from './state/referral.ts'
 import { actionCount } from './state/activity.ts'
 import { toasts, dismiss } from './state/toasts.ts'
 import { config, zenonNetworkName } from './config.ts'
 import { mode, swapMessage } from './state/swap.ts'
 
-const views = { bridge: BridgeView, activity: ActivityView, liquidity: LiquidityView, stats: StatsView, affiliate: AffiliateView }
+const views = {
+  bridge: defineAsyncComponent(() => import('./views/BridgeView.vue')),
+  activity: defineAsyncComponent(() => import('./views/ActivityView.vue')),
+  liquidity: defineAsyncComponent(() => import('./views/LiquidityView.vue')),
+  stats: defineAsyncComponent(() => import('./views/StatsView.vue')),
+  affiliate: defineAsyncComponent(() => import('./views/AffiliateView.vue')),
+}
 const current = computed(() => views[route.value])
 // A phone's tab bar has room for a mark, not for five words.
 const ICONS: Record<Route, Component> = { bridge: ArrowLeftRight, activity: History, liquidity: Droplets, stats: ChartNoAxesColumn, affiliate: Gift }
@@ -51,8 +52,10 @@ watch(
 // The bridge's state says nothing about a swap, and a swap's routers nothing about the bridge.
 const swapping = computed(() => route.value === 'bridge' && mode.value === 'swap')
 const downMessage = computed(() => {
+  const blocker = transferBlocker()
+  if (blocker && !['Bridge is unavailable', 'Bridge is paused'].includes(blocker)) return blocker + '. Refresh before sending.'
   // Stalled: the banner says what it means for the user; Stats has the detail.
-  if (bridge.health?.state === 'down') return config.swap ? 'Swaps still work.' : ''
+  if (bridge.health?.state === 'down') return config.swap ? 'EVM swaps use separate routers.' : ''
   if (bridge.health?.message && bridgeDown()) return bridge.health.message
   if (bridge.info?.halted) return 'The bridge is halted. Transfers are paused.'
   if (bridge.info?.allowKeyGen) return 'Orchestrators are generating a new key. Transfers wait until it is done.'
@@ -62,6 +65,8 @@ const downMessage = computed(() => {
 // the scan of orchestrator blocks has finished.
 const status = computed(() => {
   const h = bridge.health
+  const blocker = transferBlocker()
+  if (blocker && !['Bridge is unavailable', 'Bridge is paused'].includes(blocker)) return { tone: 'dim' as const, label: 'Unavailable', spin: !bridge.loaded }
   if (h) return { tone: h.tone, label: h.label, spin: false }
   if (bridge.info?.halted) return { tone: 'danger' as const, label: 'Halted', spin: false }
   if (bridge.info?.allowKeyGen) return { tone: 'warn' as const, label: 'Key generation', spin: false }
@@ -82,7 +87,7 @@ const status = computed(() => {
           <StatusChip :tone="status.tone" :label="status.label" :spin="status.spin" />
         </a>
         <span v-if="chainId() !== 1" class="chip chip-warn mono hidden sm:inline-flex" data-testid="network-chip">{{ networkLabel() }} {{ chainId() }}</span>
-        <nav class="ml-2 hidden items-center gap-1 md:flex">
+        <nav class="ml-2 hidden items-center gap-1 xl:flex">
           <a v-for="r in ROUTES" :key="r.id" :href="hrefOf(r.id)" class="nav-link" :class="{ active: route === r.id }">
             {{ r.label }}<span v-if="r.id === 'activity' && actionCount()" class="dot-count">{{ actionCount() }}</span>
           </a>
@@ -104,7 +109,7 @@ const status = computed(() => {
                 <span class="mono text-soft" :class="{ flash }">{{ node.height ? node.height.toLocaleString('en-US') : '…' }}</span>
               </a>
               <a class="menu-row" href="https://github.com/sol-znn/bridge.mainnet.zenon.community" target="_blank" rel="noopener">
-                <Github :size="15" /><span class="flex-1">Source</span>
+                <CodeXml :size="15" /><span class="flex-1">Source</span>
               </a>
             </div>
           </Transition>
@@ -132,7 +137,7 @@ const status = computed(() => {
       <Banner v-if="walletNode.problem" tone="warn" dismissable @dismiss="walletNode.problem = ''">{{ walletNode.problem }}.</Banner>
       <Banner v-if="node.notice && !noticeHidden" tone="wait" dismissable @dismiss="noticeHidden = true">{{ node.notice }}</Banner>
       <Banner v-if="referrer" tone="new">
-        Referral from <Address :value="referrer" :copy="false" class="text-fg" />. Unwraps of wZNN and wQSR earn 1% extra.
+        Referral from <Address :value="referrer" :copy="false" class="text-fg" />. Any bonus depends on the recipient, token and current program eligibility shown in the transfer quote.
         <template #action><button class="btn btn-ghost btn-sm -my-1 !text-inherit" @click="clearReferral">Clear</button></template>
       </Banner>
     </div>
@@ -144,7 +149,7 @@ const status = computed(() => {
     </main>
 
     <!-- A phone navigates from the bottom, where the thumb is. -->
-    <nav class="dock md:hidden" aria-label="Sections">
+    <nav class="dock xl:hidden" aria-label="Sections">
       <a v-for="r in ROUTES" :key="r.id" :href="hrefOf(r.id)" class="dock-link" :class="{ active: route === r.id }" :aria-label="r.label">
         <component :is="ICONS[r.id]" :size="20" />
         <span v-if="r.id === 'activity' && actionCount()" class="dot-count dock-count">{{ actionCount() }}</span>
@@ -265,7 +270,7 @@ const status = computed(() => {
   border: 1px solid var(--line);
   box-shadow: var(--edge), var(--shadow-pop);
 }
-@media (min-width: 700px) {
+@media (min-width: 1280px) {
   .dock {
     display: none;
   }
@@ -305,7 +310,7 @@ const status = computed(() => {
   gap: 8px;
   pointer-events: none;
 }
-@media (min-width: 700px) {
+@media (min-width: 1280px) {
   .toasts {
     bottom: 20px;
   }

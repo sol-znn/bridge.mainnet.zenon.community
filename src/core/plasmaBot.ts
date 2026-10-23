@@ -14,6 +14,7 @@ export interface PlasmaBotConfig {
   url: string
   token: string
   page: string
+  mode?: 'direct' | 'proxy'
 }
 
 export type PlasmaBotResult =
@@ -21,7 +22,7 @@ export type PlasmaBotResult =
   | { ok: false; reason: 'no-token' | 'rejected' | 'network'; message: string; page: string }
 
 export function canRequest(c: PlasmaBotConfig): boolean {
-  return Boolean(c.url && c.token)
+  return Boolean(c.url && (c.token || c.mode === 'proxy'))
 }
 
 export async function requestPlasma(
@@ -30,11 +31,14 @@ export async function requestPlasma(
   fetcher: typeof fetch = fetch,
 ): Promise<PlasmaBotResult> {
   if (!canRequest(c)) return { ok: false, reason: 'no-token', message: 'Get plasma on zenonhub', page: c.page }
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 10_000)
   try {
     const res = await fetcher(c.url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: `Bearer ${c.token}` },
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...(c.mode !== 'proxy' && c.token ? { Authorization: `Bearer ${c.token}` } : {}) },
       body: JSON.stringify({ address }),
+      signal: controller.signal,
     })
     let body: { message?: string; error?: string; data?: unknown } = {}
     try {
@@ -46,6 +50,8 @@ export async function requestPlasma(
     return { ok: false, reason: 'rejected', message: body.message || body.error || `HTTP ${res.status}`, page: c.page }
   } catch (err) {
     return { ok: false, reason: 'network', message: err instanceof Error ? err.message : String(err), page: c.page }
+  } finally {
+    clearTimeout(timer)
   }
 }
 

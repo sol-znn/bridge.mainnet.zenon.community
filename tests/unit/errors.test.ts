@@ -28,8 +28,8 @@ describe('user messages', () => {
     expect(userMessage(new Error('The total cost (gas * gas fee + value) of executing this transaction exceeds the balance of the account.')).text).toBe('Not enough funds for gas')
     expect(userMessage({ details: 'insufficient funds for gas * price + value' }).text).toBe('Not enough funds for gas')
     expect(userMessage(new Error('replacement transaction underpriced')).text).toBe('A transaction is already pending')
-    expect(userMessage(new TypeError('Failed to fetch')).text).toBe('Network error. Try again.')
-    expect(userMessage(new Error('The request took too long to respond.')).text).toBe('Timed out. Try again.')
+    expect(userMessage(new TypeError('Failed to fetch')).text).toBe('Network error. Check the original operation before retrying.')
+    expect(userMessage(new Error('The request took too long to respond.')).text).toBe('Timed out. Check the original operation before retrying.')
   })
   it('shows a contract its own reason, and no more', () => {
     expect(userMessage({ message: 'The contract function "redeem" reverted with the following reason:\nredeem: not redeemable yet\n\nContract Call:\n  address: 0xa987…', cause: { reason: 'redeem: not redeemable yet' } }).text).toBe('Redeem: not redeemable yet')

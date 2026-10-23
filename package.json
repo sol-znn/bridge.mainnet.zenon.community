@@ -6,7 +6,7 @@
   "description": "Front end for the Zenon Network of Momentum multichain bridge.",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc --noEmit && vite build",
+    "build": "vue-tsc --noEmit && vite build && node scripts/release-manifest.mjs",
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit",
     "test": "vitest run",
@@ -15,15 +15,20 @@
     "lab:up": "bash e2e/lab/lab.sh up",
     "lab:down": "bash e2e/lab/lab.sh down",
     "lab:status": "bash e2e/lab/lab.sh status",
-    "lab:wipe": "bash e2e/lab/lab.sh wipe"
+    "lab:wipe": "bash e2e/lab/lab.sh wipe",
+    "lint": "eslint src tests e2e scripts vite.config.ts",
+    "test:coverage": "vitest run --coverage",
+    "test:browser": "node tests/browser/run.mjs",
+    "lab:build:native": "node e2e/lab/build.mjs native",
+    "lab:native": "node e2e/lab/native.mjs"
   },
   "dependencies": {
     "@fontsource-variable/jetbrains-mono": "^5.2.5",
     "@fontsource-variable/space-grotesk": "^5.2.5",
+    "@lucide/vue": "1.55.0",
     "@noble/curves": "^1.9.1",
     "@noble/hashes": "^1.8.0",
     "bech32": "^2.0.0",
-    "lucide-vue-next": "^0.469.0",
     "viem": "^2.23.0",
     "vue": "^3.5.13"
   },
@@ -33,12 +38,24 @@
     "@tailwindcss/vite": "^4.1.0",
     "@types/node": "^22.10.0",
     "@vitejs/plugin-vue": "^6.0.1",
-    "puppeteer-core": "^23.11.1",
-    "solc": "^0.8.26",
+    "@vitest/coverage-v8": "5.0.4",
+    "eslint": "10.12.0",
+    "eslint-plugin-vue": "10.11.1",
+    "puppeteer-core": "25.13.0",
+    "solc": "0.8.37",
     "tailwindcss": "^4.1.0",
     "typescript": "^5.8.0",
+    "typescript-eslint": "8.71.2",
     "vite": "^7.1.0",
-    "vitest": "^5.0.4",
+    "vitest": "5.0.4",
     "vue-tsc": "^3.0.0"
+  },
+  "overrides": {
+    "solc": {
+      "tmp": "0.2.7"
+    }
+  },
+  "engines": {
+    "node": "^22.13.0 || ^24.0.0 || >=26.0.0"
   }
 }

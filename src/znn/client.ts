@@ -7,6 +7,8 @@
 // The socket reconnects with backoff and re-subscribes; calls made while it is
 // down wait for it, up to their timeout.
 
+import { momentum, record, integer, hash } from './validation.ts'
+
 export class RpcError extends Error {
   readonly code: number
   constructor(code: number, message: string) {
@@ -16,7 +18,7 @@ export class RpcError extends Error {
   }
   /** go-zenon's "no such entry": an answer, not a fault. */
   get isNotFound(): boolean {
-    return /data non existent|not found/i.test(this.message)
+    return this.code === -32000 && /^data non existent(?:$|[.:])/i.test(this.message)
   }
 }
 
@@ -92,13 +94,17 @@ export class ZenonClient {
   private socket: WebSocket | null = null
   private id = 0
   private pending = new Map<number, Pending>()
-  private waiting: Array<() => void> = []
+  private waiting = new Set<Pending>()
+  private httpControllers = new Set<AbortController>()
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private momentumHandlers = new Set<(m: Momentum) => void>()
   private subscriptionId: string | null = null
   private pollTimer: ReturnType<typeof setInterval> | null = null
   private lastPolled = 0
   private retry = 0
   private closed = false
+  private subscribing = false
+  private polling = false
   state: ConnectionState = 'connecting'
   onState?: (s: ConnectionState) => void
 
@@ -126,14 +132,15 @@ export class ZenonClient {
     }
     this.socket = socket
     socket.onopen = () => {
+      if (this.closed || this.socket !== socket) return
       this.retry = 0
       this.setState('open')
-      const ready = this.waiting
-      this.waiting = []
-      for (const go of ready) go()
+      for (const ready of [...this.waiting]) ready.resolve(undefined)
       if (this.momentumHandlers.size) void this.subscribe()
     }
-    socket.onmessage = (ev) => this.onMessage(String(ev.data))
+    socket.onmessage = (ev) => {
+      if (!this.closed && this.socket === socket) this.onMessage(String(ev.data))
+    }
     socket.onclose = () => {
       if (this.socket !== socket) return
       this.socket = null
@@ -143,6 +150,7 @@ export class ZenonClient {
         p.reject(new Error('connection to the node closed'))
       }
       this.pending.clear()
+      this.rejectWaiters()
       this.setState('closed')
       this.scheduleReconnect()
     }
@@ -154,7 +162,11 @@ export class ZenonClient {
   private scheduleReconnect() {
     if (this.closed) return
     const wait = Math.min(15_000, 500 * 2 ** this.retry++)
-    setTimeout(() => this.open(), wait)
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer)
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null
+      this.open()
+    }, wait)
   }
 
   private onMessage(raw: string) {
@@ -166,14 +178,27 @@ export class ZenonClient {
       params?: { subscription: string; result: unknown }
     }
     try {
-      msg = parseJsonSafe(raw) as typeof msg
+      const value = parseJsonSafe(raw)
+      if (!value || typeof value !== 'object' || Array.isArray(value)) return
+      msg = value as typeof msg
     } catch {
       return
     }
     if (msg.method && msg.params) {
       if (msg.params.subscription === this.subscriptionId) {
         const list = Array.isArray(msg.params.result) ? msg.params.result : [msg.params.result]
-        for (const m of list as Momentum[]) this.emitMomentum(m)
+        for (const m of list) {
+          try {
+            const r = record(m)
+            if (r.timestamp === undefined && r.chainIdentifier === undefined) {
+              // go-zenon subscriptions send only a hash/height identifier.
+              // The node store resolves it with a validated momentum read.
+              const height = integer(r.height)
+              if (!height) throw new Error('Invalid momentum identifier')
+              this.emitMomentum({ hash: hash(r.hash), height, timestamp: 0, chainIdentifier: 0 })
+            } else this.emitMomentum(momentum(r))
+          } catch { /* malformed notifications never update node state */ }
+        }
       }
       return
     }
@@ -182,41 +207,60 @@ export class ZenonClient {
     if (!p) return
     this.pending.delete(msg.id)
     clearTimeout(p.timer)
-    if (msg.error) p.reject(new RpcError(msg.error.code, msg.error.message))
-    else p.resolve(msg.result)
+    if (msg.error && 'result' in msg) p.reject(new Error('Malformed RPC response'))
+    else if (msg.error && Number.isInteger(msg.error.code) && typeof msg.error.message === 'string') p.reject(new RpcError(msg.error.code, msg.error.message))
+    else if ('result' in msg && !msg.error) p.resolve(msg.result)
+    else p.reject(new Error('Malformed RPC response'))
   }
 
   private emitMomentum(m: Momentum) {
-    for (const h of this.momentumHandlers) h(m)
+    if (!this.closed) for (const h of this.momentumHandlers) h(m)
   }
 
-  private whenOpen(): Promise<void> {
+  private rejectWaiters() {
+    for (const p of [...this.waiting]) p.reject(new Error('connection to the node closed'))
+  }
+
+  private whenOpen(timeout: number): Promise<void> {
+    if (this.closed) return Promise.reject(new Error('connection to the node closed'))
     if (this.socket?.readyState === WebSocket.OPEN) return Promise.resolve()
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error(`${this.url} did not answer`)), CALL_TIMEOUT_MS)
-      this.waiting.push(() => {
-        clearTimeout(timer)
-        resolve()
-      })
+      const cleanup = () => { clearTimeout(p.timer); this.waiting.delete(p) }
+      const p: Pending = {
+        resolve: () => { cleanup(); resolve() },
+        reject: (err) => { cleanup(); reject(err) },
+        timer: setTimeout(() => p.reject(new Error('Node connection timed out')), Math.max(0, timeout)),
+      }
+      this.waiting.add(p)
     })
   }
 
   async call<T>(method: string, params: unknown[] = []): Promise<T> {
+    if (this.closed) throw new Error('connection to the node closed')
+    const deadline = Date.now() + CALL_TIMEOUT_MS
     const n = ++this.id
     if (!this.ws) return this.httpCall<T>(n, method, params)
-    await this.whenOpen()
+    await this.whenOpen(CALL_TIMEOUT_MS)
+    if (this.closed || !this.socket || this.socket.readyState !== WebSocket.OPEN) throw new Error('connection to the node closed')
     return new Promise<T>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(n)
         reject(new Error(`${method}: no answer within ${CALL_TIMEOUT_MS / 1000} s`))
-      }, CALL_TIMEOUT_MS)
+      }, Math.max(0, deadline - Date.now()))
       this.pending.set(n, { resolve: resolve as (v: unknown) => void, reject, timer })
-      this.socket!.send(JSON.stringify({ jsonrpc: '2.0', id: n, method, params }))
+      try {
+        this.socket!.send(JSON.stringify({ jsonrpc: '2.0', id: n, method, params }))
+      } catch (err) {
+        clearTimeout(timer)
+        this.pending.delete(n)
+        reject(err)
+      }
     })
   }
 
   private async httpCall<T>(n: number, method: string, params: unknown[]): Promise<T> {
     const ctrl = new AbortController()
+    this.httpControllers.add(ctrl)
     const timer = setTimeout(() => ctrl.abort(), CALL_TIMEOUT_MS)
     try {
       const res = await fetch(this.url, {
@@ -225,11 +269,21 @@ export class ZenonClient {
         body: JSON.stringify({ jsonrpc: '2.0', id: n, method, params }),
         signal: ctrl.signal,
       })
-      const body = parseJsonSafe(await res.text()) as { result?: T; error?: { code: number; message: string } }
-      if (body.error) throw new RpcError(body.error.code, body.error.message)
+      if (!res.ok) throw new Error(`RPC HTTP ${res.status}`)
+      const raw = parseJsonSafe(await res.text())
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('Malformed RPC response')
+      const body = raw as { id?: number; result?: T; error?: { code: number; message: string } }
+      if (body.id !== n) throw new Error('RPC response identity does not match the request')
+      if (body.error && 'result' in body) throw new Error('Malformed RPC response')
+      if (body.error) {
+        if (!Number.isInteger(body.error.code) || typeof body.error.message !== 'string') throw new Error('Malformed RPC error')
+        throw new RpcError(body.error.code, body.error.message)
+      }
+      if (!('result' in body)) throw new Error('Malformed RPC response')
       return body.result as T
     } finally {
       clearTimeout(timer)
+      this.httpControllers.delete(ctrl)
     }
   }
 
@@ -248,6 +302,7 @@ export class ZenonClient {
    * over HTTP the frontier is polled every 5 s.
    */
   onMomentum(handler: (m: Momentum) => void): () => void {
+    if (this.closed) throw new Error('connection to the node closed')
     this.momentumHandlers.add(handler)
     if (this.momentumHandlers.size === 1) {
       if (this.ws) void this.subscribe()
@@ -263,26 +318,33 @@ export class ZenonClient {
   }
 
   private async subscribe() {
+    if (this.subscribing || this.subscriptionId || !this.momentumHandlers.size || this.closed) return
+    this.subscribing = true
+    const socket = this.socket
     try {
-      this.subscriptionId = await this.call<string>('ledger.subscribe', ['momentums'])
+      const id = await this.call<string>('ledger.subscribe', ['momentums'])
+      if (typeof id !== 'string' || !id || id.length > 256) throw new Error('Malformed subscription identity')
+      if (!this.closed && socket === this.socket) this.subscriptionId = id
     } catch {
       // Some proxies refuse subscriptions; polling covers them.
-      this.startPolling()
-    }
+      if (!this.closed && this.momentumHandlers.size) this.startPolling()
+    } finally { this.subscribing = false }
   }
 
   private startPolling() {
-    if (this.pollTimer) return
+    if (this.pollTimer || this.closed || !this.momentumHandlers.size) return
     const tick = async () => {
+      if (this.polling || this.closed || !this.momentumHandlers.size) return
+      this.polling = true
       try {
-        const m = await this.call<Momentum>('ledger.getFrontierMomentum')
+        const m = await this.frontierMomentum()
         if (m.height > this.lastPolled) {
           this.lastPolled = m.height
           this.emitMomentum(m)
         }
       } catch {
         /* the next tick tries again */
-      }
+      } finally { this.polling = false }
     }
     void tick()
     this.pollTimer = setInterval(tick, 5000)
@@ -291,6 +353,10 @@ export class ZenonClient {
   close() {
     this.closed = true
     if (this.pollTimer) clearInterval(this.pollTimer)
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer)
+    this.rejectWaiters()
+    for (const controller of this.httpControllers) controller.abort()
+    this.httpControllers.clear()
     // Calls in flight fail now rather than at their timeout: the caller is
     // usually about to ask the replacement client the same thing.
     for (const [, p] of this.pending) {
@@ -300,12 +366,13 @@ export class ZenonClient {
     this.pending.clear()
     this.socket?.close()
     this.socket = null
+    this.setState('closed')
   }
 
   // Calls the e2e harness's signer needs (e2e/lib/publish.ts).
 
-  frontierMomentum(): Promise<Momentum> {
-    return this.call('ledger.getFrontierMomentum')
+  async frontierMomentum(): Promise<Momentum> {
+    return momentum(await this.call('ledger.getFrontierMomentum'))
   }
 
   frontierAccountBlock(address: string): Promise<{ hash: string; height: number } | null> {

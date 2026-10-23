@@ -8,6 +8,7 @@ import type { ZenonClient, Momentum } from './client.ts'
 import { BRIDGE, LIQUIDITY } from '../config.ts'
 import type { BlockSpec } from './block.ts'
 import { selectorOf } from './abi.ts'
+import * as v from './validation.ts'
 
 export interface ZtsToken {
   name: string
@@ -133,25 +134,39 @@ export interface Page<T> {
 }
 
 type Raw = Record<string, unknown>
-const big = (v: unknown): bigint => {
-  if (v === null || v === undefined || v === '') return 0n
-  return BigInt(String(v))
+const big = v.amount
+function token(value: unknown): ZtsToken | null {
+  if (value === null) return null
+  const r = v.record(value)
+  return { name: v.text(r.name, 256), symbol: v.text(r.symbol, 64), domain: v.text(r.domain, 256), decimals: v.integer(r.decimals, 255),
+    tokenStandard: v.tokenStandard(r.tokenStandard), totalSupply: big(r.totalSupply).toString(), maxSupply: big(r.maxSupply).toString(), owner: v.zenonAddress(r.owner) }
 }
-
-function pair(r: Raw): TokenPair {
-  return { ...(r as unknown as TokenPair), minAmount: big(r.minAmount) }
+function pair(value: unknown): TokenPair {
+  const r = v.record(value)
+  return { tokenStandard: v.tokenStandard(r.tokenStandard), tokenAddress: v.evmAddress(r.tokenAddress), bridgeable: v.flag(r.bridgeable),
+    redeemable: v.flag(r.redeemable), owned: v.flag(r.owned), minAmount: big(r.minAmount), feePercentage: v.integer(r.feePercentage, 10_000),
+    redeemDelay: v.integer(r.redeemDelay), metadata: v.text(r.metadata) }
 }
-
-function wrap(r: Raw): WrapRequest {
-  return { ...(r as unknown as WrapRequest), amount: big(r.amount), fee: big(r.fee) }
+function wrap(value: unknown): WrapRequest {
+  const r = v.record(value)
+  const amount = big(r.amount), fee = big(r.fee)
+  if (fee > amount) throw new Error('RPC fee exceeds amount')
+  return { networkClass: v.integer(r.networkClass, 0xffffffff), chainId: v.integer(r.chainId, 0xffffffff), id: v.hash(r.id),
+    toAddress: v.evmAddress(r.toAddress), tokenStandard: v.tokenStandard(r.tokenStandard), tokenAddress: v.evmAddress(r.tokenAddress),
+    amount, fee, signature: v.text(r.signature, 256), creationMomentumHeight: v.integer(r.creationMomentumHeight), token: token(r.token),
+    confirmationsToFinality: v.integer(r.confirmationsToFinality) }
 }
-
-function unwrap(r: Raw): UnwrapRequest {
-  return { ...(r as unknown as UnwrapRequest), amount: big(r.amount) }
+function unwrap(value: unknown): UnwrapRequest {
+  const r = v.record(value)
+  return { registrationMomentumHeight: v.integer(r.registrationMomentumHeight), networkClass: v.integer(r.networkClass, 0xffffffff), chainId: v.integer(r.chainId, 0xffffffff),
+    transactionHash: v.hash(r.transactionHash), logIndex: v.integer(r.logIndex, 0xffffffff), toAddress: v.zenonAddress(r.toAddress),
+    tokenAddress: v.evmAddress(r.tokenAddress), tokenStandard: v.tokenStandard(r.tokenStandard), amount: big(r.amount), signature: v.text(r.signature, 256),
+    redeemed: v.integer(r.redeemed, 1), revoked: v.integer(r.revoked, 1), token: token(r.token), redeemableIn: v.integer(r.redeemableIn) }
 }
-
-function page<T>(r: { count?: number; list?: Raw[] | null } | null, map: (x: Raw) => T): Page<T> {
-  return { count: r?.count ?? 0, list: (r?.list ?? []).map(map) }
+function page<T>(value: unknown, map: (x: unknown) => T): Page<T> {
+  const r = v.record(value), count = v.integer(r.count), rows = v.list(r.list, true)
+  if (rows.length > count) throw new Error('RPC page count is inconsistent')
+  return { count, list: rows.map(map) }
 }
 
 export class ZenonApi {
@@ -161,17 +176,18 @@ export class ZenonApi {
   }
 
   frontierMomentum(): Promise<Momentum> {
-    return this.c.call('ledger.getFrontierMomentum')
+    return this.c.frontierMomentum()
   }
 
   async momentumAt(height: number): Promise<Momentum | null> {
     const r = await this.c.call<{ list: Momentum[] | null }>('ledger.getMomentumsByHeight', [height, 1])
-    return r.list?.[0] ?? null
+    const rows = v.list(r.list, true)
+    return rows.length ? v.momentum(rows[0]) : null
   }
 
   async momentums(count: number): Promise<Momentum[]> {
     const r = await this.c.call<{ list: Momentum[] | null }>('ledger.getMomentumsByPage', [0, count])
-    return r.list ?? []
+    return v.list(r.list, true).map(v.momentum)
   }
 
   async balances(address: string): Promise<Record<string, bigint>> {
@@ -180,17 +196,17 @@ export class ZenonApi {
       [address],
     )
     const out: Record<string, bigint> = {}
-    for (const [zts, b] of Object.entries(r.balanceInfoMap ?? {})) out[zts] = big(b.balance)
+    for (const [zts, b] of Object.entries(r.balanceInfoMap ?? {})) out[v.tokenStandard(zts)] = big(v.record(b).balance)
     return out
   }
 
   async plasma(address: string): Promise<Plasma> {
     const r = await this.c.call<Raw>('embedded.plasma.get', [address])
-    return { currentPlasma: Number(r.currentPlasma), maxPlasma: Number(r.maxPlasma), qsrAmount: big(r.qsrAmount) }
+    return { currentPlasma: v.integer(r.currentPlasma), maxPlasma: v.integer(r.maxPlasma), qsrAmount: big(r.qsrAmount) }
   }
 
-  token(zts: string): Promise<ZtsToken | null> {
-    return this.c.callOrNull('embedded.token.getByZts', [zts])
+  async token(zts: string): Promise<ZtsToken | null> {
+    return token(await this.c.callOrNull('embedded.token.getByZts', [zts]))
   }
 
   async pillarsByProducer(): Promise<Record<string, string>> {
@@ -199,30 +215,40 @@ export class ZenonApi {
       [0, 1000],
     )
     const out: Record<string, string> = {}
-    for (const p of r.list ?? []) out[p.producerAddress] = p.name
+    for (const value of v.list(r.list, true)) { const p = v.record(value); out[v.zenonAddress(p.producerAddress)] = v.text(p.name, 256) }
     return out
   }
 
-  bridgeInfo(): Promise<BridgeInfo> {
-    return this.c.call('embedded.bridge.getBridgeInfo')
+  async bridgeInfo(): Promise<BridgeInfo> {
+    const r = v.record(await this.c.call('embedded.bridge.getBridgeInfo'))
+    return { administrator: v.zenonAddress(r.administrator), compressedTssECDSAPubKey: v.text(r.compressedTssECDSAPubKey, 128),
+      decompressedTssECDSAPubKey: v.text(r.decompressedTssECDSAPubKey, 128), allowKeyGen: v.flag(r.allowKeyGen), halted: v.flag(r.halted),
+      unhaltedAt: v.integer(r.unhaltedAt), unhaltDurationInMomentums: v.integer(r.unhaltDurationInMomentums), tssNonce: v.integer(r.tssNonce), metadata: v.text(r.metadata) }
   }
 
-  orchestratorInfo(): Promise<OrchestratorInfo> {
-    return this.c.call('embedded.bridge.getOrchestratorInfo')
+  async orchestratorInfo(): Promise<OrchestratorInfo> {
+    const r = v.record(await this.c.call('embedded.bridge.getOrchestratorInfo'))
+    return { windowSize: v.integer(r.windowSize), keyGenThreshold: v.integer(r.keyGenThreshold), confirmationsToFinality: v.integer(r.confirmationsToFinality),
+      estimatedMomentumTime: v.integer(r.estimatedMomentumTime), allowKeyGenHeight: v.integer(r.allowKeyGenHeight) }
   }
 
-  securityInfo(): Promise<{ guardians: string[]; administratorDelay: number; softDelay: number }> {
-    return this.c.call('embedded.bridge.getSecurityInfo')
+  async securityInfo(): Promise<{ guardians: string[]; administratorDelay: number; softDelay: number }> {
+    const r = v.record(await this.c.call('embedded.bridge.getSecurityInfo'))
+    return { guardians: v.list(r.guardians, true).map(v.zenonAddress), administratorDelay: v.integer(r.administratorDelay), softDelay: v.integer(r.softDelay) }
   }
 
   async networks(): Promise<NetworkInfo[]> {
     const r = await this.c.call<{ list: Raw[] | null }>('embedded.bridge.getAllNetworks', [0, 100])
-    return (r.list ?? []).map((n) => ({ ...(n as unknown as NetworkInfo), tokenPairs: ((n.tokenPairs as Raw[]) ?? []).map(pair) }))
+    return v.list(r.list, true).map((value) => {
+      const n = v.record(value)
+      return { networkClass: v.integer(n.networkClass, 0xffffffff), chainId: v.integer(n.chainId, 0xffffffff), name: v.text(n.name, 256),
+        contractAddress: v.evmAddress(n.contractAddress), metadata: v.text(n.metadata), tokenPairs: v.list(n.tokenPairs, true).map(pair) }
+    })
   }
 
   async feeTokenPair(zts: string): Promise<bigint> {
     const r = await this.c.callOrNull<Raw>('embedded.bridge.getFeeTokenPair', [zts])
-    return big(r?.accumulatedFee)
+    return r ? big(r.accumulatedFee) : 0n
   }
 
   async wrapsTo(address: string, pageIndex = 0, pageSize = 50): Promise<Page<WrapRequest>> {
@@ -265,18 +291,18 @@ export class ZenonApi {
     const out: Array<{ address: string; selector: string; momentumHeight: number; momentumTimestamp: number }> = []
     for (let p = 0; p < pages; p++) {
       const r = await this.c.call<{ list: Raw[] | null; count: number }>('ledger.getAccountBlocksByPage', [BRIDGE, p, 100])
-      for (const b of r.list ?? []) {
-        const send = b.pairedAccountBlock as Raw | null
-        const conf = b.confirmationDetail as Raw | null
+      const rows = v.list(r.list, true)
+      for (const value of rows) {
+        const b = v.record(value), send = b.pairedAccountBlock === null ? null : v.record(b.pairedAccountBlock), conf = b.confirmationDetail === null ? null : v.record(b.confirmationDetail)
         if (!send || !conf) continue
         out.push({
-          address: String(send.address),
-          selector: selectorOf(send.data as string),
-          momentumHeight: Number(conf.momentumHeight),
-          momentumTimestamp: Number(conf.momentumTimestamp),
+          address: v.zenonAddress(send.address),
+          selector: selectorOf(v.text(send.data)),
+          momentumHeight: v.integer(conf.momentumHeight),
+          momentumTimestamp: v.integer(conf.momentumTimestamp),
         })
       }
-      if ((r.list ?? []).length < 100) break
+      if (rows.length < 100) break
     }
     return out
   }
@@ -284,19 +310,22 @@ export class ZenonApi {
   async liquidityInfo(): Promise<LiquidityInfo> {
     const r = await this.c.call<Raw>('embedded.liquidity.getLiquidityInfo')
     return {
-      ...(r as unknown as LiquidityInfo),
+      administrator: v.zenonAddress(r.administrator), isHalted: v.flag(r.isHalted),
       znnReward: big(r.znnReward),
       qsrReward: big(r.qsrReward),
-      tokenTuples: ((r.tokenTuples as Raw[]) ?? []).map((t) => ({ ...(t as unknown as LiquidityInfo['tokenTuples'][0]), minAmount: big(t.minAmount) })),
+      tokenTuples: v.list(r.tokenTuples, true).map((value) => { const t = v.record(value); return { tokenStandard: v.tokenStandard(t.tokenStandard),
+        znnPercentage: v.integer(t.znnPercentage, 10_000), qsrPercentage: v.integer(t.qsrPercentage, 10_000), minAmount: big(t.minAmount) } }),
     }
   }
 
-  async stakeEntries(address: string): Promise<{ totalAmount: bigint; totalWeightedAmount: bigint; list: StakeEntry[] }> {
-    const r = await this.c.call<Raw>('embedded.liquidity.getLiquidityStakeEntriesByAddress', [address, 0, 100])
+  async stakeEntries(address: string, index = 0, size = 100): Promise<{ count: number; totalAmount: bigint; totalWeightedAmount: bigint; list: StakeEntry[] }> {
+    const r = await this.c.call<Raw>('embedded.liquidity.getLiquidityStakeEntriesByAddress', [address, index, size])
     return {
+      count: v.integer(r.count),
       totalAmount: big(r.totalAmount),
       totalWeightedAmount: big(r.totalWeightedAmount),
-      list: ((r.list as Raw[]) ?? []).map((e) => ({ ...(e as unknown as StakeEntry), amount: big(e.amount), weightedAmount: big(e.weightedAmount) })),
+      list: v.list(r.list, true).map((value) => { const e = v.record(value); return { id: v.hash(e.id), amount: big(e.amount), weightedAmount: big(e.weightedAmount),
+        tokenStandard: v.tokenStandard(e.tokenStandard), startTime: v.integer(e.startTime), revokeTime: v.integer(e.revokeTime), expirationTime: v.integer(e.expirationTime), stakeAddress: v.zenonAddress(e.stakeAddress) } }),
     }
   }
 
@@ -351,7 +380,24 @@ export function collectRewardBlock(): BlockSpec {
 
 export function parseMetadata(raw: string): BridgeMetadata {
   try {
-    return JSON.parse(raw) as BridgeMetadata
+    const source = v.record(JSON.parse(v.text(raw, 32_768)))
+    const meta: BridgeMetadata = {}
+    if (source.affiliateProgram !== undefined) {
+      const program = v.record(source.affiliateProgram), networks = v.record(program.networks)
+      const clean: NonNullable<NonNullable<BridgeMetadata['affiliateProgram']>['networks']> = {}
+      if (Object.keys(networks).length > 100) throw new Error('Too many affiliate networks')
+      for (const [key, value] of Object.entries(networks)) {
+        if (!/^\d{1,10}$/.test(key) || Number(key) < 1 || Number(key) > 0xffffffff) throw new Error('Invalid affiliate network')
+        const n = v.record(value)
+        clean[key] = { startingHeight: n.startingHeight === undefined ? 0 : v.integer(n.startingHeight),
+          wZNN: n.wZNN === undefined ? false : v.flag(n.wZNN), wQSR: n.wQSR === undefined ? false : v.flag(n.wQSR) }
+      }
+      meta.affiliateProgram = { networks: clean }
+    }
+    if (source.resignState !== undefined) { const r = v.record(source.resignState); meta.resignState = { active: v.flag(r.active), networkClass: v.integer(r.networkClass, 0xffffffff), chainId: v.integer(r.chainId, 0xffffffff) } }
+    if (source.signCeremonyPoolSize !== undefined) meta.signCeremonyPoolSize = v.integer(source.signCeremonyPoolSize, 1000)
+    if (source.keyGenVersion !== undefined) meta.keyGenVersion = v.text(source.keyGenVersion, 128)
+    return meta
   } catch {
     return {}
   }
@@ -363,9 +409,10 @@ export function parseMetadata(raw: string): BridgeMetadata {
  * token paired with ZNN (flag "wZNN") and with QSR ("wQSR"), from
  * `startingHeight` (HyperCore orchestrator, common/global_state.go).
  */
-export function affiliateActive(meta: BridgeMetadata, chainId: number, tokenStandard: string): boolean {
+export function affiliateActive(meta: BridgeMetadata, chainId: number, tokenStandard: string, height?: bigint): boolean {
   const n = meta.affiliateProgram?.networks?.[String(chainId)]
   if (!n || !((n.startingHeight ?? 0) > 0)) return false
+  if (height === undefined || height < BigInt(n.startingHeight!)) return false
   if (tokenStandard === 'zts1znnxxxxxxxxxxxxx9z4ulx') return n.wZNN === true
   if (tokenStandard === 'zts1qsrxxxxxxxxxxxxxmrhjll') return n.wQSR === true
   return false

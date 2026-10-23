@@ -7,19 +7,27 @@ import { reactive, watch } from 'vue'
 import { api, node, syrius, chainId as zenonChain } from './zenon.ts'
 import { config } from '../config.ts'
 import { evm, walletForReads } from './evm.ts'
-import { bridge, routeByEvmToken, routeByZts } from './bridge.ts'
+import { bridge, nodeContext, routeByEvmToken, routeByZts } from './bridge.ts'
 import { readClient } from '../evm/client.ts'
 import { bridgeAbi } from '../evm/abi.ts'
 import { wrapStatus, unwrapStatus, isAffiliateEntry, type Status } from '../core/status.ts'
 import type { UnwrapRequest, WrapRequest } from '../znn/api.ts'
+import { allPages, mapLimit } from '../core/paging.ts'
+import { isAddress, parseZts } from '../znn/primitives.ts'
+import { isEvmRecipient } from '../core/recipient.ts'
+import { parseEventLogs } from 'viem'
+import { operations } from './operations.ts'
 
 const KEY = 'bridge.activity.v2'
 const WATCH_KEY = 'bridge.watch'
+let localStorageProblem = ''
 
 export interface LocalWrap {
   kind: 'wrap'
   id: string
   /** Zenon chain identifier; absent on records from before it was kept. */
+  contract?: string
+  terminal?: boolean
   znn?: number
   chainId: number
   toAddress: string
@@ -32,6 +40,9 @@ export interface LocalWrap {
 export interface LocalUnwrap {
   kind: 'unwrap'
   txHash: string
+  logIndex?: number
+  contract?: string
+  terminal?: boolean
   znn?: number
   chainId: number
   toAddress: string
@@ -58,6 +69,7 @@ export interface Item {
   unwrap?: UnwrapRequest
   /** Zenon tx of the wrap, or the EVM tx of the unwrap. */
   sourceTx: string
+  context: string
 }
 
 export const activity = reactive({
@@ -65,26 +77,31 @@ export const activity = reactive({
   items: [] as Item[],
   loading: false,
   loadedOnce: false,
-  /** Wrap id -> EVM redeemsInfo block number. Done ones are never re-read. */
+  /** Node/chain/contract/request identity -> a current EVM redeem read. */
   redeemBlocks: {} as Record<string, string>,
   evmBlocks: {} as Record<number, string>,
   busy: {} as Record<string, boolean>,
   /** When items were last built: countdowns run from here. */
   builtAt: 0,
+  readAt: 0,
+  context: '',
+  error: '',
+  storageError: localStorageProblem,
   /** Addresses the user asked to follow without connecting a wallet. */
   watched: loadWatched(),
 })
 
 function loadWatched(): string[] {
   try {
-    return JSON.parse(localStorage.getItem(WATCH_KEY) || '[]') as string[]
+    const value: unknown = JSON.parse(localStorage.getItem(WATCH_KEY) || '[]')
+    return Array.isArray(value) ? value.filter((a): a is string => typeof a === 'string' && (isAddress(a) || isEvmRecipient(a))).slice(0, 20) : []
   } catch {
     return []
   }
 }
 
 export function setWatched(list: string[]) {
-  activity.watched = [...new Set(list)].slice(0, 20)
+  activity.watched = [...new Set(list.filter((a) => isAddress(a) || isEvmRecipient(a)))].slice(0, 20)
   try {
     localStorage.setItem(WATCH_KEY, JSON.stringify(activity.watched))
   } catch {
@@ -95,17 +112,27 @@ export function setWatched(list: string[]) {
 
 function load(): LocalRecord[] {
   try {
-    return JSON.parse(localStorage.getItem(KEY) || '[]') as LocalRecord[]
+    const raw: unknown = JSON.parse(localStorage.getItem(KEY) || '[]')
+    if (!Array.isArray(raw) || raw.length > 10_000) throw new Error('Malformed local history')
+    const records = raw.filter(validLocal)
+    if (records.length !== raw.length) {
+      localStorageProblem = 'Some local history is unreadable. Original storage is retained; restore the original hashes before relying on this history.'
+      try { localStorage.setItem(KEY + '.quarantine', JSON.stringify(raw)) } catch { /* original storage is retained */ }
+    }
+    return records
   } catch {
+    localStorageProblem = 'Local history is unavailable. Original storage is retained; recover the original transaction identities.'
     return []
   }
 }
 
 function save() {
+  if (localStorageProblem) { activity.storageError = localStorageProblem; return }
   try {
-    localStorage.setItem(KEY, JSON.stringify(activity.local.slice(0, 200)))
+    const retained = activity.local.filter((r) => !r.terminal).concat(activity.local.filter((r) => r.terminal).slice(0, 200))
+    localStorage.setItem(KEY, JSON.stringify(retained))
   } catch {
-    /* blocked storage: history lasts for this tab */
+    activity.storageError = 'Cannot save local history. Keep the original transaction hashes.'
   }
 }
 
@@ -113,7 +140,9 @@ function save() {
 const localHere = () => activity.local.filter((r) => (r.znn ?? config.zenonChainId) === zenonChain())
 
 export function remember(r: LocalRecord) {
-  activity.local.unshift({ ...r, znn: zenonChain() })
+  const record = { ...r, znn: r.znn ?? zenonChain() }
+  if (!validLocal(record)) throw new Error('Invalid local transaction record')
+  activity.local.unshift(record)
   save()
   void refreshActivity()
 }
@@ -135,28 +164,109 @@ function addresses() {
   return { evmAddrs: [...evmAddrs], zAddrs: [...zAddrs] }
 }
 
-let running = false
-
-export async function refreshActivity() {
-  if (running || !api.value || !bridge.orch) return
-  running = true
-  activity.loading = true
-  try {
-    const { evmAddrs, zAddrs } = addresses()
-    const [wraps, unwraps] = await Promise.all([
-      Promise.all(evmAddrs.map((a) => api.value.wrapsTo(a, 0, 50).then((p) => p.list).catch(() => []))),
-      Promise.all(zAddrs.map((a) => api.value.unwrapsTo(a, 0, 50).then((p) => p.list).catch(() => []))),
-    ])
-    const allWraps = dedupe(wraps.flat(), (w) => w.id)
-    const allUnwraps = dedupe(unwraps.flat(), (u) => `${u.transactionHash}:${u.logIndex}`)
-    await readEvmRedeems(allWraps)
-    activity.items = build(allWraps, allUnwraps)
-    activity.builtAt = Date.now() / 1000
-    activity.loadedOnce = true
-  } finally {
-    running = false
-    activity.loading = false
+function validLocal(value: unknown): value is LocalRecord {
+  if (!value || typeof value !== 'object') return false
+  const r = value as LocalRecord
+  if (!['wrap', 'unwrap'].includes(r.kind) || !Number.isSafeInteger(r.chainId) || r.chainId <= 0 ||
+    r.znn !== undefined && (!Number.isSafeInteger(r.znn) || r.znn <= 0) || typeof r.amount !== 'string' ||
+    !/^\d{1,78}$/.test(r.amount) || BigInt(r.amount) >= (1n << 256n) || !Number.isSafeInteger(r.createdAt) ||
+    typeof r.from !== 'string' || typeof r.toAddress !== 'string') return false
+  if (r.contract !== undefined && !isEvmRecipient(r.contract)) return false
+  if (r.kind === 'wrap') {
+    try { parseZts(r.tokenStandard) } catch { return false }
+    return /^[0-9a-f]{64}$/i.test(r.id) && isAddress(r.from) && isEvmRecipient(r.toAddress)
   }
+  return /^0x[0-9a-f]{64}$/i.test(r.txHash) && isEvmRecipient(r.from) && isAddress(r.toAddress) && isEvmRecipient(r.tokenAddress) &&
+    (r.logIndex === undefined || Number.isSafeInteger(r.logIndex) && r.logIndex >= 0 && r.logIndex < 4_000_000_000)
+}
+
+let requestId = 0
+let active: { key: string; promise: Promise<void> } | null = null
+const historyContext = () => JSON.stringify([nodeContext(), evm.account, evm.chainId, evm.selected?.info.uuid, syrius.address, activity.watched,
+  localHere().map((r) => r.kind === 'wrap' ? r.id : r.txHash)])
+const redeemKey = (w: WrapRequest) => JSON.stringify([nodeContext(), w.networkClass, w.chainId, bridge.networks.find((n) => n.chainId === w.chainId)?.contractAddress.toLowerCase(), w.id])
+
+export function refreshActivity(): Promise<void> {
+  const a = api.value, key = historyContext()
+  if (!a || !bridge.orch || !bridge.loaded) return Promise.resolve()
+  if (active?.key === key) return active.promise
+  const request = ++requestId
+  const current = () => request === requestId && a === api.value && historyContext() === key
+  if (activity.context !== key) { activity.items = []; activity.redeemBlocks = {}; activity.evmBlocks = {}; activity.loadedOnce = false }
+  activity.context = key
+  activity.loading = true
+  activity.readAt = 0
+  const promise = (async () => {
+    try {
+      // Exact publication reconciliation does not depend on complete address
+      // history, which may be unavailable or exceed the paging limit.
+      for (const operation of operations.entries.filter((r) => r.hash && ['submitted', 'unknown'].includes(r.state))) {
+        if (!current()) return
+        const { reconcileZenon, reconcileEvm } = await import('./reconcile.ts')
+        if (operation.source === 'zenon' && operation.chainId === zenonChain()) await reconcileZenon(a, operation, operation.hash, current).catch(() => false)
+        else if (operation.source === 'evm') await reconcileEvm(readClient(operation.chainId, walletForReads()), operation, operation.hash, current).catch(() => false)
+      }
+      const { evmAddrs, zAddrs } = addresses()
+      const local = localHere().map((r) => ({ ...r }))
+      const [wrapLists, unwrapLists] = await Promise.all([
+        mapLimit(evmAddrs, (address) => allPages((index, size) => a.wrapsTo(address, index, size), current)),
+        mapLimit(zAddrs, (address) => allPages((index, size) => a.unwrapsTo(address, index, size), current)),
+      ])
+      const allWraps = dedupe(wrapLists.flat(), (w) => `${w.networkClass}:${w.chainId}:${w.id}`)
+      const allUnwraps = dedupe(unwrapLists.flat(), (u) => `${u.networkClass}:${u.chainId}:${u.transactionHash}:${u.logIndex}`)
+      for (const r of local) {
+        if (!current()) return
+        if (r.kind === 'wrap' && !allWraps.some((w) => w.id === r.id)) {
+          const exact = await a.wrapById(r.id)
+          if (exact && exact.chainId === r.chainId && exact.toAddress.toLowerCase() === r.toAddress.toLowerCase()) allWraps.push(exact)
+        } else if (r.kind === 'unwrap') {
+          let logIndex = r.logIndex
+          if (logIndex === undefined) {
+            const route = routeByEvmToken(r.chainId, r.tokenAddress)
+            const contract = r.contract ?? route?.contract
+            if (!contract) continue
+            try {
+              const reader = readClient(r.chainId, walletForReads())
+              if (await reader.getChainId() !== r.chainId) throw new Error('RPC chain mismatch')
+              const receipt = await reader.getTransactionReceipt({ hash: r.txHash as `0x${string}` })
+              if (receipt.transactionHash.toLowerCase() !== r.txHash.toLowerCase() || receipt.status !== 'success') continue
+              const logs = parseEventLogs({ abi: bridgeAbi, eventName: 'Unwrapped', logs: receipt.logs.filter((l) => l.address.toLowerCase() === contract.toLowerCase()) })
+              if (logs.length !== 1 || logs[0].args.token.toLowerCase() !== r.tokenAddress.toLowerCase() || logs[0].args.to.split('&')[0] !== r.toAddress) continue
+              logIndex = logs[0].logIndex
+              const stored = activity.local.find((x) => x.kind === 'unwrap' && x.txHash === r.txHash && x.znn === r.znn) as LocalUnwrap | undefined
+              if (current() && stored) { stored.logIndex = logIndex; stored.contract = contract; save() }
+            } catch { continue /* pending exact receipt: never discover a hash from history */ }
+          }
+          if (!allUnwraps.some((u) => u.transactionHash.replace(/^0x/, '').toLowerCase() === r.txHash.slice(2).toLowerCase() && u.logIndex === logIndex && u.chainId === r.chainId)) {
+            const exact = await a.unwrapByHashAndLog(r.txHash, logIndex)
+            if (exact && exact.chainId === r.chainId && exact.toAddress === r.toAddress) allUnwraps.push(exact)
+          }
+        }
+      }
+      const [redeems, blocks] = await readEvmRedeems(allWraps, current)
+      if (!current()) return
+      activity.redeemBlocks = redeems
+      activity.evmBlocks = blocks
+      activity.items = build(allWraps, allUnwraps)
+      activity.builtAt = Date.now() / 1000
+      activity.readAt = Date.now()
+      activity.loadedOnce = true
+      activity.error = ''
+      if (current()) {
+        for (const record of activity.local) {
+          const item = activity.items.find((i) => i.sourceTx.toLowerCase() === (record.kind === 'wrap' ? record.id : record.txHash.slice(2)).toLowerCase())
+          if (item && ['done', 'revoked', 'failed'].includes(item.status.state)) record.terminal = true
+        }
+        save()
+      }
+    } catch (error) {
+      if (current()) { activity.error = error instanceof Error ? error.message : 'History unavailable'; activity.readAt = 0 }
+    } finally {
+      if (current()) { active = null; activity.loading = false }
+    }
+  })()
+  active = { key, promise }
+  return promise
 }
 
 function dedupe<T>(list: T[], key: (x: T) => string): T[] {
@@ -165,41 +275,25 @@ function dedupe<T>(list: T[], key: (x: T) => string): T[] {
   return [...m.values()]
 }
 
-const MAX = ((1n << 256n) - 1n).toString()
-
-async function readEvmRedeems(wraps: WrapRequest[]) {
-  const byChain = new Map<number, WrapRequest[]>()
-  for (const w of wraps) {
-    if (!w.signature || activity.redeemBlocks[w.id] === MAX) continue
-    byChain.set(w.chainId, [...(byChain.get(w.chainId) ?? []), w])
+async function readEvmRedeems(wraps: WrapRequest[], current: () => boolean): Promise<[Record<string, string>, Record<number, string>]> {
+  const redeemBlocks: Record<string, string> = {}, evmBlocks: Record<number, string> = {}
+  for (const chainId of new Set(wraps.filter((w) => w.signature).map((w) => w.chainId))) {
+    const net = bridge.networks.find((n) => n.chainId === chainId)
+    if (!net || !current()) continue
+    const c = readClient(chainId, walletForReads())
+    try {
+      if (await c.getChainId() !== chainId) continue
+      await mapLimit(wraps.filter((r) => r.chainId === chainId && r.signature), async (w) => {
+        if (!current()) return
+        try {
+          const [bn] = await c.readContract({ address: net.contractAddress as `0x${string}`, abi: bridgeAbi, functionName: 'redeemsInfo', args: [BigInt('0x' + w.id)] })
+          redeemBlocks[redeemKey(w)] = bn.toString()
+        } catch { /* unread is explicit; never reuse a completed cache after failure */ }
+      })
+      if (current() && await c.getChainId() === chainId) evmBlocks[chainId] = (await c.getBlockNumber({ cacheTime: 0 })).toString()
+    } catch { /* no current EVM height */ }
   }
-  await Promise.all(
-    [...byChain].map(async ([chainId, list]) => {
-      const net = bridge.networks.find((n) => n.chainId === chainId)
-      if (!net) return
-      const c = readClient(chainId, walletForReads())
-      try {
-        activity.evmBlocks[chainId] = (await c.getBlockNumber()).toString()
-      } catch {
-        return
-      }
-      await Promise.all(
-        list.map(async (w) => {
-          try {
-            const [bn] = await c.readContract({
-              address: net.contractAddress as `0x${string}`,
-              abi: bridgeAbi,
-              functionName: 'redeemsInfo',
-              args: [BigInt('0x' + w.id)],
-            })
-            activity.redeemBlocks[w.id] = bn.toString()
-          } catch {
-            /* keep the last value */
-          }
-        }),
-      )
-    }),
-  )
+  return [redeemBlocks, evmBlocks]
 }
 
 function build(wraps: WrapRequest[], unwraps: UnwrapRequest[]): Item[] {
@@ -214,11 +308,11 @@ function build(wraps: WrapRequest[], unwraps: UnwrapRequest[]): Item[] {
 
   for (const w of wraps) {
     const route = routeByZts(w.chainId, w.tokenStandard)
-    const rb = activity.redeemBlocks[w.id]
+    const rb = activity.redeemBlocks[redeemKey(w)]
     const eb = activity.evmBlocks[w.chainId]
     const net = bridge.evmNetworks[w.chainId]
     items.push({
-      key: `w:${w.id}`,
+      key: `w:${redeemKey(w)}`,
       kind: 'wrap',
       chainId: w.chainId,
       toAddress: w.toAddress,
@@ -228,6 +322,7 @@ function build(wraps: WrapRequest[], unwraps: UnwrapRequest[]): Item[] {
       createdAt: sentAt.get(w.id) ?? ageOf(w.creationMomentumHeight),
       bonus: false,
       wrap: w,
+      context: activity.context,
       sourceTx: w.id,
       status: wrapStatus({
         signature: w.signature,
@@ -240,19 +335,10 @@ function build(wraps: WrapRequest[], unwraps: UnwrapRequest[]): Item[] {
       }),
     })
   }
-  // An unwrap keeps one key from the moment it is sent to the moment it is
-  // done: `u:<evm tx>`, which is all the page knows before the orchestrators
-  // register it. A row that changed key on registration was swapped out and
-  // back in, and the list jumped under the pointer (found by the e2e test).
-  // Further entries of the same transaction, the referrer's among them, add
-  // their log index.
-  const seenTx = new Set<string>()
   for (const u of [...unwraps].sort((a, b) => a.logIndex - b.logIndex)) {
     const route = routeByEvmToken(u.chainId, u.tokenAddress)
-    const first = !seenTx.has(u.transactionHash)
-    seenTx.add(u.transactionHash)
     items.push({
-      key: first ? `u:${u.transactionHash}` : `u:${u.transactionHash}:${u.logIndex}`,
+      key: `u:${nodeContext()}:${u.networkClass}:${u.chainId}:${u.transactionHash}:${u.logIndex}`,
       kind: 'unwrap',
       chainId: u.chainId,
       toAddress: u.toAddress,
@@ -262,16 +348,17 @@ function build(wraps: WrapRequest[], unwraps: UnwrapRequest[]): Item[] {
       createdAt: sentAt.get(u.transactionHash) ?? ageOf(u.registrationMomentumHeight),
       bonus: isAffiliateEntry(u.logIndex),
       unwrap: u,
+      context: activity.context,
       sourceTx: u.transactionHash,
       status: unwrapStatus({ ...u, momentumSeconds }),
     })
   }
   // Sent here, not on chain yet.
-  for (const r of activity.local) {
+  for (const r of localHere()) {
     if (r.kind === 'wrap' && !wraps.some((w) => w.id === r.id)) {
       const route = routeByZts(r.chainId, r.tokenStandard)
       items.push({
-        key: `w:${r.id}`,
+        key: `w:${nodeContext()}:${r.chainId}:${r.contract ?? ''}:${r.id}`,
         kind: 'wrap',
         chainId: r.chainId,
         toAddress: r.toAddress,
@@ -280,7 +367,8 @@ function build(wraps: WrapRequest[], unwraps: UnwrapRequest[]): Item[] {
         decimals: route?.zts?.decimals ?? 8,
         createdAt: r.createdAt,
         bonus: false,
-        sourceTx: r.id,
+        context: activity.context,
+      sourceTx: r.id,
         status: { state: 'confirming', label: 'Confirming', tone: 'wait' },
       })
     }
@@ -289,7 +377,7 @@ function build(wraps: WrapRequest[], unwraps: UnwrapRequest[]): Item[] {
       const net = bridge.evmNetworks[r.chainId]
       const wait = (net?.confirmations ?? 0) * (net?.blockTime ?? 12) - (now - r.createdAt)
       items.push({
-        key: `u:${r.txHash.replace(/^0x/, '').toLowerCase()}`,
+        key: `u:${nodeContext()}:${r.chainId}:${r.contract ?? ''}:${r.txHash.toLowerCase()}`,
         kind: 'unwrap',
         chainId: r.chainId,
         toAddress: r.toAddress,
@@ -298,7 +386,8 @@ function build(wraps: WrapRequest[], unwraps: UnwrapRequest[]): Item[] {
         decimals: route?.zts?.decimals ?? 8,
         createdAt: r.createdAt,
         bonus: false,
-        sourceTx: r.txHash,
+        context: activity.context,
+      sourceTx: r.txHash,
         status: { state: 'signing', label: wait > 0 ? 'Confirming' : 'Signing', tone: 'wait', eta: wait > 0 ? wait : undefined },
       })
     }
@@ -325,7 +414,8 @@ export function startActivity() {
     },
   )
   watch(
-    () => [evm.account, syrius.address, bridge.loaded],
-    () => void refreshActivity(),
+    () => [api.value, node.epoch, node.chainId, evm.account, evm.chainId, evm.selected, syrius.address, bridge.loaded],
+    () => { requestId++; active = null; activity.readAt = 0; if (activity.context !== historyContext()) activity.items = []; void refreshActivity() },
+    { flush: 'sync' },
   )
 }

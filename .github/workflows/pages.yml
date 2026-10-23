@@ -21,8 +21,6 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
@@ -32,19 +30,22 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: 22
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26.5.0
           cache: npm
       - run: npm ci
-      - run: npm test
+      - run: npm run lint
+      - run: npm run test:coverage
       - run: npm run build
         env:
           VITE_NETWORK: mainnet
           VITE_BASE: ${{ vars.VITE_BASE || '/' }}
-          VITE_PLASMA_BOT_TOKEN: ${{ secrets.VITE_PLASMA_BOT_TOKEN }}
           VITE_PLASMA_BOT_URL: ${{ vars.VITE_PLASMA_BOT_URL }}
+          VITE_PLASMA_BOT_TOKEN: ${{ github.event_name != 'pull_request' && secrets.VITE_PLASMA_BOT_TOKEN || '' }}
           VITE_ZNN_NODE: ${{ vars.VITE_ZNN_NODE }}
           VITE_EVM_RPCS: ${{ vars.VITE_EVM_RPCS }}
       - name: Refuse a build that loads anything from a CDN
@@ -52,7 +53,7 @@ jobs:
           if grep -rlE "https?://(cdn\.|unpkg\.com|fonts\.googleapis|fonts\.gstatic|cdnjs\.|cdn\.jsdelivr)" dist/; then
             echo "dist/ references a CDN"; exit 1
           fi
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         if: github.event_name != 'pull_request'
         with:
           path: dist
@@ -61,9 +62,13 @@ jobs:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

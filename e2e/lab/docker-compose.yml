@@ -20,6 +20,7 @@ services:
     <<: *node
     container_name: bridge-lab-pillar
     environment: { <<: *env, ZNND_ROLE: pillar }
+    ports: ["127.0.0.1:47100:35997"]
     volumes: [pillar-data:/root/.znn, ./assets:/devnet:ro]
     networks: { lab: { ipv4_address: 172.38.0.10 } }
 
@@ -28,6 +29,7 @@ services:
     container_name: bridge-lab-pillar2
     depends_on: [pillar]
     environment: { <<: *env, ZNND_ROLE: pillar2 }
+    ports: ["127.0.0.1:47101:35997"]
     volumes: [pillar2-data:/root/.znn, ./assets:/devnet:ro]
     networks: { lab: { ipv4_address: 172.38.0.12 } }
 
@@ -36,6 +38,7 @@ services:
     container_name: bridge-lab-pillar3
     depends_on: [pillar]
     environment: { <<: *env, ZNND_ROLE: pillar3 }
+    ports: ["127.0.0.1:47102:35997"]
     volumes: [pillar3-data:/root/.znn, ./assets:/devnet:ro]
     networks: { lab: { ipv4_address: 172.38.0.13 } }
 
@@ -44,6 +47,7 @@ services:
     container_name: bridge-lab-observer
     depends_on: [pillar]
     environment: { <<: *env, ZNND_ROLE: observer }
+    ports: ["127.0.0.1:47103:35997"]
     volumes: [observer-data:/root/.znn, ./assets:/devnet:ro]
     networks: { lab: { ipv4_address: 172.38.0.14 } }
 
@@ -61,10 +65,10 @@ services:
   # The EVM side. Chain 31337, instant blocks, state kept in memory: a fresh
   # chain every `up`, which setup.ts redeploys the contracts on.
   anvil:
-    image: ghcr.io/foundry-rs/foundry:stable
+    image: ${LAB_ANVIL_IMAGE:?run lab.sh, which sets the pinned image digest}
     container_name: bridge-lab-anvil
     restart: "no"
-    entrypoint: ["anvil", "--host", "0.0.0.0", "--chain-id", "31337"]
+    entrypoint: ["anvil", "--host", "0.0.0.0", "--chain-id", "31337", "--block-time", "1"]
     ports:
       - "127.0.0.1:46545:8545"
     networks: { lab: { ipv4_address: 172.38.0.20 } }

@@ -1,0 +1,20 @@
+name: Improvement proposal
+description: Propose a focused change with concrete acceptance conditions.
+body:
+  - type: markdown
+    attributes:
+      value: Keep public proposals in English. Exclude personal information, credentials, private paths, wallet exports and raw logs. Use SECURITY.md for sensitive reports.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and proposed behavior
+      description: Describe the affected flow, scope and supported alternative.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance and validation
+      description: Name meaningful tests, evidence boundaries and any maintainer/operator decision needed. Do not infer deployment or activation approval.
+    validations:
+      required: true

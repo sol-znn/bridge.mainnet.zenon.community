@@ -12,7 +12,7 @@
 // network/evm.go), so it must never be the mangled code: the original app sent
 // the code on a first visit, and those referrals earned nothing.
 
-import { isAddress } from '../znn/primitives.ts'
+import { isUserAddress } from '../znn/primitives.ts'
 
 const KEY = 'UjFpyVLBUHC'
 export const STORAGE_KEY = 'znn-referral-code'
@@ -37,19 +37,24 @@ export function unmangle(hex: string, key = KEY): string {
 
 /** The referrer's address for a code, or null when the code does not decode to one. */
 export function referrerFromCode(code: string | null | undefined): string | null {
-  if (!code) return null
+  if (!code || code.length > 128) return null
   const a = unmangle(code.trim())
-  return isAddress(a) ? a : null
+  return isUserAddress(a) ? a : null
 }
 
 export function linkFor(address: string, origin: string): string {
+  if (!isUserAddress(address)) throw new Error('Use a supported Zenon account address')
   return `${origin}?referral=${mangle(address)}`
 }
 
 /** The unwrap recipient string: "z1recipient" or "z1recipient&z1referrer". */
 export function recipientString(recipient: string, referrer: string | null): string {
-  if (!referrer || referrer === recipient) return recipient
+  if (!usableReferrer(recipient, referrer)) return recipient
   return `${recipient}${SEPARATOR}${referrer}`
+}
+
+export function usableReferrer(recipient: string, referrer: string | null): string | null {
+  return isUserAddress(recipient) && referrer && isUserAddress(referrer) && referrer !== recipient ? referrer : null
 }
 
 export interface ReferralStore {

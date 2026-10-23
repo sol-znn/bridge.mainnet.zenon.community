@@ -1,0 +1,171 @@
+name: Qualification
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: qualification-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  unit:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        node: ['22', '24', '26.5.0']
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run test:coverage
+      - run: npm audit --audit-level=low
+      - run: npm run build
+      - name: Retain the qualified mainnet build
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mainnet-build-node-${{ matrix.node }}
+          path: dist
+          include-hidden-files: true
+          retention-days: 14
+  docker-lab:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      GO_ZENON_DIR: ${{ github.workspace }}/.lab-source
+      EXPECTED_BROWSER_VERSION: 155.0.8059.39
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: sol-znn/go-zenon
+          ref: 616f0a61ebc8562846965822f94976e531e0937c
+          path: .lab-source
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26.5.0
+          cache: npm
+      - run: npm ci
+      - name: Install and sandbox the pinned browser
+        run: |
+          mkdir -p .lab-tools
+          node_modules/.bin/browsers install chrome-headless-shell@155.0.8059.39 --path .lab-tools
+          browser_path=$(find .lab-tools -type f -name chrome-headless-shell -print -quit)
+          test -n "$browser_path"
+          browser_path="$GITHUB_WORKSPACE/$browser_path"
+          test -x "$browser_path"
+          printf 'CHROME_PATH=%s\n' "$browser_path" >> "$GITHUB_ENV"
+          printf '%s\n' \
+            'abi <abi/4.0>,' \
+            'include <tunables/global>' \
+            "profile bridge-qualification-browser \"$browser_path\" flags=(unconfined) {" \
+            '  userns,' \
+            '}' > .lab-tools/browser.apparmor
+          sudo install -m 0644 .lab-tools/browser.apparmor /etc/apparmor.d/bridge-qualification-browser
+          sudo apparmor_parser --replace /etc/apparmor.d/bridge-qualification-browser
+      - name: Qualify a fresh Docker lab
+        run: |
+          test ! -e e2e/.state/publication.json
+          test ! -e e2e/lab/assets/genesis.json
+          test -z "$(docker ps -aq --filter label=com.docker.compose.project=bridge-lab)"
+          touch .lab-tools/docker-launch-owned
+          npm run lab:up
+          npm run test:e2e
+      - name: Stop this job's Docker lab
+        if: always()
+        run: |
+          if test -f .lab-tools/docker-launch-owned && test -f e2e/lab/.build/revision; then
+            npm run lab:down
+          fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: docker-qualification-evidence
+          path: |
+            .browser-results/built-report.json
+            e2e/lab/.build/manifest.json
+            e2e/lab/.build/docker/run-manifest.json
+            e2e/lab/.build/docker/readiness-report.json
+            e2e/.cache/compile-manifest.json
+          include-hidden-files: true
+          retention-days: 14
+  isolated-lab:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      GO_ZENON_DIR: ${{ github.workspace }}/.lab-source
+      ANVIL_BIN: ${{ github.workspace }}/.lab-tools/anvil
+      EXPECTED_BROWSER_VERSION: 155.0.8059.39
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: sol-znn/go-zenon
+          ref: 616f0a61ebc8562846965822f94976e531e0937c
+          path: .lab-source
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.27.1
+          cache-dependency-path: .lab-source/go.sum
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26.5.0
+          cache: npm
+      - run: npm ci
+      - name: Install pinned public lab tools
+        run: |
+          mkdir -p .lab-tools
+          curl -fL --retry 2 https://github.com/foundry-rs/foundry/releases/download/v1.8.5/foundry_v1.8.5_linux_amd64.tar.gz -o .lab-tools/anvil.tar.gz
+          printf '%s  %s\n' '6c66ffcc55fa4249197721baa3098bc208014ea1d8aa04b2ed50ac6bccffb226' '.lab-tools/anvil.tar.gz' | sha256sum --check
+          tar -xzf .lab-tools/anvil.tar.gz -C .lab-tools anvil
+          node_modules/.bin/browsers install chrome-headless-shell@155.0.8059.39 --path .lab-tools
+          browser_path=$(find .lab-tools -type f -name chrome-headless-shell -print -quit)
+          test -n "$browser_path"
+          printf 'CHROME_PATH=%s/%s\n' "$GITHUB_WORKSPACE" "$browser_path" >> "$GITHUB_ENV"
+      - name: Configure namespaces for the pinned browser sandbox
+        run: |
+          test -x "$CHROME_PATH"
+          printf '%s\n' \
+            'abi <abi/4.0>,' \
+            'include <tunables/global>' \
+            "profile bridge-qualification-browser \"$CHROME_PATH\" flags=(unconfined) {" \
+            '  userns,' \
+            '}' > .lab-tools/browser.apparmor
+          sudo install -m 0644 .lab-tools/browser.apparmor /etc/apparmor.d/bridge-qualification-browser
+          sudo apparmor_parser --replace /etc/apparmor.d/bridge-qualification-browser
+      - run: npm run lab:build:native
+      - name: Qualify components and both isolated chains
+        run: |
+          node e2e/lab/native.mjs > .lab-tools/native.log 2>&1 &
+          lab_supervisor=$!
+          trap 'kill "$lab_supervisor" 2>/dev/null || true; wait "$lab_supervisor" || true' EXIT
+          node e2e/lab/frontier.mjs 60 --wait 120 --native
+          npm run test:browser
+          npm run test:e2e
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: qualification-evidence
+          path: |
+            .browser-results/report.json
+            .browser-results/built-report.json
+            .browser-results/*.png
+            e2e/lab/.build/manifest.json
+            e2e/lab/.build/native/run-manifest.json
+            e2e/lab/.build/native/readiness-report.json
+            e2e/.cache/compile-manifest.json
+            .lab-tools/browser.apparmor
+          include-hidden-files: true
+          retention-days: 14

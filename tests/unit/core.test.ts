@@ -30,7 +30,7 @@ describe('format', () => {
     expect(parseUnits('1.5', 8)).toBe(150_000_000n)
     expect(parseUnits('0.00000001', 8)).toBe(1n)
     expect(parseUnits('0.000000001', 8)).toBeNull()
-    expect(parseUnits('1,000', 8)).toBe(100_000_000_000n)
+    expect(parseUnits('1,000', 8)).toBeNull()
     expect(parseUnits('abc', 8)).toBeNull()
     expect(parseUnits('.', 8)).toBeNull()
     expect(formatUnits(123456789012n, 8)).toBe('1,234.56789')
@@ -89,7 +89,9 @@ describe('affiliate program metadata', () => {
     '{"affiliateProgram":{"networks":{"1":{"startingHeight":17678862,"ZNN":true,"QSR":true,"wZNN":true,"wQSR":false}}}}',
   )
   it('is keyed by the EVM token paired with ZNN or QSR', () => {
-    expect(affiliateActive(meta, 1, 'zts1znnxxxxxxxxxxxxx9z4ulx')).toBe(true)
+    expect(affiliateActive(meta, 1, 'zts1znnxxxxxxxxxxxxx9z4ulx', 17678862n)).toBe(true)
+    expect(affiliateActive(meta, 1, 'zts1znnxxxxxxxxxxxxx9z4ulx', 17678861n)).toBe(false)
+    expect(affiliateActive(meta, 1, 'zts1znnxxxxxxxxxxxxx9z4ulx')).toBe(false)
     expect(affiliateActive(meta, 1, 'zts1qsrxxxxxxxxxxxxxmrhjll')).toBe(false)
     expect(affiliateActive(meta, 56, 'zts1znnxxxxxxxxxxxxx9z4ulx')).toBe(false)
     expect(affiliateActive(meta, 1, 'zts17d6yr02kh0r9qr566p7tg6')).toBe(false)

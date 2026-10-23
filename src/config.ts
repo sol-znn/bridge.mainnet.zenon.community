@@ -37,7 +37,7 @@ export interface NetworkConfig {
   zenonExplorerTx: (hash: string) => string
   zenonExplorerAddress: (address: string) => string
   evm: Record<number, EvmChainConfig>
-  plasmaBot: { url: string; token: string; page: string }
+  plasmaBot: { url: string; token: string; page: string; mode?: 'direct' | 'proxy' }
   buyZnn: string
   /** EVM-to-EVM swaps that do not use the bridge, where a router serves the chains. */
   swap?: SwapConfig
@@ -96,6 +96,7 @@ const mainnet: NetworkConfig = {
   },
   plasmaBot: {
     url: env.VITE_PLASMA_BOT_URL || 'https://zenonhub.io/api/utilities/plasma-bot/fuse',
+    mode: env.VITE_PLASMA_BOT_URL ? 'proxy' : 'direct',
     token: env.VITE_PLASMA_BOT_TOKEN || '',
     page: 'https://zenonhub.io/tools/plasma-bot',
   },
@@ -130,7 +131,7 @@ const devnet: NetworkConfig = {
       testnet: true,
     },
   },
-  plasmaBot: { url: env.VITE_PLASMA_BOT_URL || '', token: env.VITE_PLASMA_BOT_TOKEN || '', page: '' },
+  plasmaBot: { url: env.VITE_PLASMA_BOT_URL || '', token: env.VITE_PLASMA_BOT_TOKEN || '', page: '', mode: env.VITE_PLASMA_BOT_URL ? 'proxy' : 'direct' },
   buyZnn: '',
 }
 

@@ -43,7 +43,7 @@ const across = (o: { to?: string; spender?: string; value?: string; input?: stri
   expectedOutputAmount: '335430467700791872',
   minOutputAmount: '333753315362287912',
   expectedFillTime: 3,
-  quoteExpiryTimestamp: o.expiry ?? 1_791_858_532,
+  quoteExpiryTimestamp: o.expiry ?? Math.floor(Date.now() / 1000) + 32,
   checks: { allowance: { spender: o.spender ?? cfg.across.router } },
   fees: { total: { amountUsd: '0.4559' } },
   swapTx: { to: o.to ?? cfg.across.router, data: '0x609ea081', value: o.value ?? '100000000000000000' },
@@ -58,7 +58,7 @@ const lifi = (o: { to?: string; approval?: string; value?: string } = {}) => ({
     approvalAddress: o.approval ?? cfg.lifi.router,
     feeCosts: [{ amountUSD: '0.6162' }, { amountUSD: '1.2321' }],
   },
-  transactionRequest: { to: o.to ?? cfg.lifi.router, data: '0xabcdef', value: o.value ?? '0x16345785d8a0000' },
+  transactionRequest: { to: o.to ?? cfg.lifi.router, data: '0xabcdef00', value: o.value ?? '0x16345785d8a0000' },
 })
 const respond = (routes: Record<string, { status?: number; body: unknown }>) =>
   vi.fn(async (url: string, _init?: RequestInit) => {
@@ -96,6 +96,24 @@ describe('swap requests', () => {
 })
 
 describe('swap quotes', () => {
+  it('never extends an expired, missing or malformed Across expiry', () => {
+    for (const expiry of [0, 1, NaN, Infinity]) {
+      expect(parseAcross(cfg, req({ to: bnb }), across({ expiry }), 100_000).ok).toBe(false)
+    }
+    expect(parseAcross(cfg, req({ to: bnb }), across({ expiry: 104 }), 100_000).ok).toBe(false)
+  })
+  it('refuses malformed calldata and a malformed token transaction value', () => {
+    expect(parseKyber(cfg, req({ amount: -1n }), kyber({ value: 'not an integer' })).ok).toBe(false)
+    expect(parseKyber(cfg, req(), { data: { ...kyber().data, data: 'not calldata' } }).ok).toBe(false)
+    expect(parseKyber(cfg, sell, kyber({ value: 'not an integer' })).ok).toBe(false)
+    expect(parseLifi(cfg, req(), { ...lifi(), transactionRequest: { ...lifi().transactionRequest, data: '0x1' } }).ok).toBe(false)
+  })
+  it('rejects zero, negative, unsafe numeric and inverted output amounts', () => {
+    for (const amountOut of ['0', '-1', Number.MAX_SAFE_INTEGER + 1, (2n ** 256n).toString()]) {
+      expect(parseKyber(cfg, req(), { data: { ...kyber().data, amountOut } }).ok).toBe(false)
+    }
+    expect(parseAcross(cfg, req({ to: bnb }), { ...across(), minOutputAmount: '99999999999999999999999' }).ok).toBe(false)
+  })
   it('reads KyberSwap: no fee, half a percent of slippage', () => {
     const r = parseKyber(cfg, req(), kyber(), 1000)
     expect(r).toMatchObject({ ok: true, quote: { provider: 'kyber', via: 'KyberSwap', spender: cfg.kyber.router, toAmount: 156875519751n, toAmountMin: 156091142152n, seconds: 0, feeUsd: null, expires: 61_000 } })
@@ -103,7 +121,7 @@ describe('swap quotes', () => {
     expect(r.quote.tx).toEqual({ to: cfg.kyber.router, data: '0xe21fd0e9', value: 10n ** 17n })
   })
   it('reads Across: its own minimum, fill time, fee and expiry', () => {
-    const r = parseAcross(cfg, req({ to: bnb }), across(), 1_791_858_500_000)
+    const r = parseAcross(cfg, req({ to: bnb }), across({ expiry: 1_791_858_532 }), 1_791_858_500_000)
     expect(r).toMatchObject({ ok: true, quote: { provider: 'across', via: 'Across', toAmount: 335430467700791872n, toAmountMin: 333753315362287912n, seconds: 3, feeUsd: 0.4559, expires: 1_791_858_527_000 } })
   })
   it('reads LI.FI: the bridge under it and the summed fees', () => {
@@ -139,6 +157,11 @@ describe('swap quotes', () => {
 })
 
 describe('swap routing', () => {
+  it('bounds an oversized router response and does not use it or shop it elsewhere', async () => {
+    const f = respond({ '/routes?': { body: { data: { routeSummary: 'x'.repeat(300_000) } } } })
+    expect(await fetchQuote(cfg, req(), as(f))).toEqual({ ok: false, message: 'Quote response exceeds size limit' })
+    expect(f).toHaveBeenCalledTimes(1)
+  })
   it('uses KyberSwap on one chain: route, then build with sender and recipient', async () => {
     const f = respond({ '/routes?': { body: { data: { routeSummary: { amountOut: '1' } } } }, '/route/build': { body: kyber() } })
     const r = await fetchQuote(cfg, req({ toAddress: them }), as(f))

@@ -1,13 +1,13 @@
 <script setup lang="ts">
 // Bridge and network stats, read from the chain. Orchestrator status is
 // derived (core/orchestrators.ts): no monitoring service is involved.
-import { computed, onMounted, ref, watch } from 'vue'
-import { RefreshCw, ExternalLink } from 'lucide-vue-next'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { RefreshCw, ExternalLink } from '@lucide/vue'
 import TokenIcon from '../components/TokenIcon.vue'
 import Amount from '../components/Amount.vue'
 import Address from '../components/Address.vue'
 import StatusChip from '../components/StatusChip.vue'
-import { bridge, loadBridge, loadHealth } from '../state/bridge.ts'
+import { bridge, loadBridge, loadHealth, nodeContext } from '../state/bridge.ts'
 import { api, node, hostOf } from '../state/zenon.ts'
 import { ACTIVE_WITHIN_S } from '../core/orchestrators.ts'
 import { ago, duration } from '../core/format.ts'
@@ -19,25 +19,37 @@ const fees = ref<Record<string, bigint>>({})
 const security = ref<{ guardians: string[]; administratorDelay: number; softDelay: number } | null>(null)
 const liquidity = ref<LiquidityInfo | null>(null)
 const loading = ref(false)
+const extrasError = ref('')
+const extrasReadAt = ref(0)
+let request = 0, mounted = true
+onUnmounted(() => { mounted = false; request++ })
 
 async function loadExtras() {
+  const a = api.value, context = nodeContext(), generation = ++request
+  const current = () => mounted && generation === request && a === api.value && context === nodeContext()
+  if (!a || !bridge.loaded) return
   loading.value = true
+  extrasReadAt.value = 0
   try {
-    const a = api.value
     const zts = [...new Set(bridge.routes.map((r) => r.pair.tokenStandard))]
     const [w, u, sec, liq, feeList] = await Promise.all([
       a.allWraps(0, 1),
       a.allUnwraps(0, 1),
-      a.securityInfo().catch(() => null),
-      a.liquidityInfo().catch(() => null),
-      Promise.all(zts.map(async (z) => [z, await a.feeTokenPair(z).catch(() => 0n)] as const)),
+      a.securityInfo(),
+      a.liquidityInfo(),
+      Promise.all(zts.map(async (z) => [z, await a.feeTokenPair(z)] as const)),
     ])
+    if (!current()) return
     totals.value = { wraps: w.count, unwraps: u.count }
     security.value = sec
     liquidity.value = liq
     fees.value = Object.fromEntries(feeList)
+    extrasReadAt.value = Date.now()
+    extrasError.value = ''
+  } catch {
+    if (current()) extrasError.value = 'Some statistics are unavailable. Retained values are a previous snapshot.'
   } finally {
-    loading.value = false
+    if (current()) loading.value = false
   }
 }
 
@@ -45,8 +57,13 @@ onMounted(() => {
   if (bridge.loaded) void loadExtras()
 })
 watch(
-  () => bridge.loaded,
-  (v) => v && !totals.value && loadExtras(),
+  () => [bridge.loaded, nodeContext()],
+  () => {
+    request++
+    totals.value = null; security.value = null; liquidity.value = null; fees.value = {}; extrasReadAt.value = 0; loading.value = false
+    if (bridge.loaded) void loadExtras()
+  },
+  { flush: 'sync' },
 )
 
 async function refresh() {
@@ -84,7 +101,11 @@ const momentumTime = computed(() => bridge.orch?.estimatedMomentumTime || 10)
           <span v-else class="skeleton h-6 w-20" />
         </div>
         <p v-if="h?.message" class="mt-2 text-[15px] text-fg">{{ h.message }}</p>
-        <p v-else-if="h" class="mt-2 text-[15px] text-soft">Signing normally.</p>
+        <p v-else-if="h?.state === 'online'" class="mt-2 text-[15px] text-soft">Recent signing activity was observed in the sampled history.</p>
+        <p v-else-if="h?.state === 'idle'" class="mt-2 text-[15px] text-soft">No recent signing activity was observed. Operator readiness is not established.</p>
+        <p v-else class="mt-2 text-[15px] text-soft">Signing status is unavailable. Operator readiness is not established.</p>
+        <p v-if="bridge.healthError || !bridge.healthAt" class="mt-2 text-sm text-warn">Health reads are unavailable or being refreshed. Retained results do not establish current readiness.</p>
+        <p v-else class="mt-2 text-xs text-dim">Read {{ new Date(bridge.healthAt).toISOString() }} · up to 300 bridge blocks scanned · {{ bridge.healthSampled ? 'unsigned requests sampled' : 'unsigned request page complete' }}.</p>
       </div>
       <div class="kpis">
         <div>
@@ -93,15 +114,16 @@ const momentumTime = computed(() => bridge.orch?.estimatedMomentumTime || 10)
         </div>
         <div>
           <div class="label">Waiting to sign</div>
-          <div class="kpi">{{ h ? h.waiting.length : '–' }}</div>
+          <div class="kpi">{{ h ? bridge.unsignedCount : '–' }}</div>
         </div>
         <div>
-          <div class="label">Oldest wait</div>
+          <div class="label">Oldest sampled wait</div>
           <div class="kpi">{{ h?.oldestWaitSeconds ? duration(h.oldestWaitSeconds) : '–' }}</div>
         </div>
         <div>
-          <div class="label">Active 24h</div>
-          <div class="kpi">{{ h ? activeCount : '–' }} <span class="text-base text-dim">/ {{ bridge.orch?.keyGenThreshold ?? '–' }} needed</span></div>
+          <div class="label">Producers seen in 24h</div>
+          <div class="kpi">{{ h ? activeCount : '–' }}</div>
+          <div class="text-xs text-dim">Sampled activity does not measure TSS readiness.</div>
         </div>
       </div>
 
@@ -147,6 +169,9 @@ const momentumTime = computed(() => bridge.orch?.estimatedMomentumTime || 10)
       </div>
     </div>
 
+    <p v-if="extrasError" class="text-sm text-warn">{{ extrasError }}</p>
+    <p v-else-if="extrasReadAt" class="text-xs text-dim">Statistics read {{ new Date(extrasReadAt).toISOString() }}.</p>
+
     <!-- Network -->
     <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
       <div class="panel p-4">
@@ -182,7 +207,7 @@ const momentumTime = computed(() => bridge.orch?.estimatedMomentumTime || 10)
         <StatusChip
           v-if="bridge.evmNetworks[n.chainId]"
           :tone="bridge.evmNetworks[n.chainId].halted ? 'danger' : bridge.evmNetworks[n.chainId].halted === null ? 'dim' : 'ok'"
-          :label="bridge.evmNetworks[n.chainId].halted ? 'Halted' : bridge.evmNetworks[n.chainId].halted === null ? 'Unread' : 'Contract live'"
+          :label="bridge.evmNetworks[n.chainId].halted ? 'Halted' : bridge.evmNetworks[n.chainId].halted === null ? 'Unread' : 'Not halted'"
         />
         <a
           v-if="evmAddressUrl(n.chainId, n.contractAddress)"
