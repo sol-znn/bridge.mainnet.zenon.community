@@ -1,33 +1,33 @@
 {
   "schema": 2,
   "scope": "CI-installed packages classified as non-dev by the exact lockfile; not a claim that all are bundled",
-  "lockfileSha256": "0d476e13627fc9e6e0d066c2eb132d1799dcdac5a7bfbe464456e2ea50dc1302",
+  "lockfileSha256": "e45a5617baa32bbc02b7888cc448860f4022e1b9d21e563cdaf0d5a9908d6147",
   "provenance": "Observed package versions and exact notice bytes from three independently qualified npm ci/build jobs; upstream tarball integrity remains declared by the lockfile, not requalified by this inventory",
   "observation": {
     "repository": "sol-znn/bridge.mainnet.zenon.community",
-    "sourceCommit": "b8af7c02f7c99409bfa5b4b11bfd88d1020b3753",
-    "sourceTree": "456b36c73b7abbcd59726149004a0a057a240260",
-    "runId": 40527547982,
+    "sourceCommit": "db4924e963dd445c860c71eb9a84807e6dedb513",
+    "sourceTree": "f789282e1e07a621c03c5ab55c9052f78d75dabd",
+    "runId": 40804467240,
     "attempt": 1,
-    "sourceInputsHash": "617a3a80e31c98e28b927c2a0ddaaf4d766811a1a1613a695870dd8e4e0b0549",
+    "sourceInputsHash": "0e7000d6d3dcf9c10dfc426602f6e28a7bcc82f74cfa56da3f0cb3db37ca32da",
     "nodeVersions": [
-      "22.23.3",
-      "24.21.0",
+      "22.23.4",
+      "24.22.1",
       "26.5.0"
     ],
-    "noticeManifestSha256": "8cbab91df6cf130f8fed3f856470d81b6d190b434b606f3c9e49b2246472d98e",
+    "noticeManifestSha256": "939c3696888a202dd9d5fd9b04b7216b3939c2426bf6a2df87ca5dac18a13569",
     "buildArtifacts": [
       {
-        "id": 12745340305,
-        "sha256": "b63fdb0a68db983ae1795e2740ae7fb4ce352fa0460b930534e2e695597cd822"
+        "id": 12867821194,
+        "sha256": "9d53b9d8646d83f565b11698c8496a7ed90cbad5615caf893ceb72a71d8bc5c9"
       },
       {
-        "id": 12745066379,
-        "sha256": "3939a514d791aacff844edf8c87dbc8ac0570e28088ede68c4293a1e06352cd8"
+        "id": 12868160121,
+        "sha256": "4ab09f634ce023c3ccb3d4cf99a53110dee15f70fe551b905a3e875c39989b0d"
       },
       {
-        "id": 12745355310,
-        "sha256": "0579362356097cbc6bbbcc6eac320540f87f9aa187dd0dbfe9bef91832854fc0"
+        "id": 12867831143,
+        "sha256": "f8249f80c4c100c02be17ffc0ddb92927a9e2e439c0e6715d505639768d4ba08"
       }
     ]
   },
@@ -39,496 +39,551 @@
       "packagePath": "node_modules/@adraffy/ens-normalize",
       "name": "@adraffy/ens-normalize",
       "lockedVersion": "1.11.1",
-      "observedBuiltNoticeVersion": "1.11.1",
       "integrity": "sha512-nhCBV3quEgesuf7c7KYfperqSS14T8bYuvJ8PcLJp6znkZpFc0AuW4qBtr8eKVyPPe/8RSr7sglCWPU5eaxwKQ==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "3b458813ab3316b16bf004c4201d4a0583cf615514422dabf4d7c025988d613d"
-      }
+      },
+      "observedBuiltNoticeVersion": "1.11.1"
     },
     {
       "packagePath": "node_modules/@babel/helper-string-parser",
       "name": "@babel/helper-string-parser",
       "lockedVersion": "7.29.7",
-      "observedBuiltNoticeVersion": "7.29.7",
       "integrity": "sha512-Pb5ijPrZ89GDH8223L4UP8i6QApWxs04RbPQJTeWDV0/keR2E36MeKnyr6LYmUUvqRRI+Iv87SuF1W6ErINzYw==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "117da2af0d4ce0fe1c8e19b5cff9dcd806adf973d328d27b11d4448c4ff24f76"
-      }
+      },
+      "observedBuiltNoticeVersion": "7.29.7"
     },
     {
       "packagePath": "node_modules/@babel/helper-validator-identifier",
       "name": "@babel/helper-validator-identifier",
       "lockedVersion": "7.29.7",
-      "observedBuiltNoticeVersion": "7.29.7",
       "integrity": "sha512-qehxGkRj55h/ff8EMaJ+cYhyaKlHIxqYDn682wQD7RNp9UujOQsHog2uS0r2vzr4pW+sXf90NeeayjcNaX3fFg==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "117da2af0d4ce0fe1c8e19b5cff9dcd806adf973d328d27b11d4448c4ff24f76"
-      }
+      },
+      "observedBuiltNoticeVersion": "7.29.7"
     },
     {
       "packagePath": "node_modules/@babel/parser",
       "name": "@babel/parser",
       "lockedVersion": "7.29.9",
-      "observedBuiltNoticeVersion": "7.29.9",
       "integrity": "sha512-CjXrNHTnvqBVqHgdBysY3vk2T8tpJHb5/RMeHJBTyVa9xgugCB0CJTx/3oO8RV2QRQP391RWpB7D6hLjm8V9uA==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "2e97627cb278aa7556fb9e8817368302301a595b6c7582512b8d74c57b773652"
-      }
+      },
+      "observedBuiltNoticeVersion": "7.29.9"
     },
     {
       "packagePath": "node_modules/@babel/types",
       "name": "@babel/types",
       "lockedVersion": "7.29.8",
-      "observedBuiltNoticeVersion": "7.29.8",
       "integrity": "sha512-Vj1jF3cPfxg7OAfoI7QnVKLoILlm2JF9pnVHrX8qx7AHMiYWT+NDAA7jChlNgRS4WTLc/fD1lXLmPixluj+3Gg==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "117da2af0d4ce0fe1c8e19b5cff9dcd806adf973d328d27b11d4448c4ff24f76"
-      }
+      },
+      "observedBuiltNoticeVersion": "7.29.8"
     },
     {
       "packagePath": "node_modules/@fontsource-variable/jetbrains-mono",
       "name": "@fontsource-variable/jetbrains-mono",
       "lockedVersion": "5.3.0",
-      "observedBuiltNoticeVersion": "5.3.0",
       "integrity": "sha512-F32xpS2NsGYoQi2ADSkKTgpJj7ozajsGgDJ8woTnqjmIB+dxDIqImjl4pXZVEExu8UFZ2ndhmX18EBS/hdz3Lw==",
       "declaredLicense": "OFL-1.1",
       "noticeFileSha256": {
         "LICENSE": "403581b69dac5cff4079205e01c6b467e56af449ecbd7247693ddb1baafa005b"
-      }
+      },
+      "observedBuiltNoticeVersion": "5.3.0"
     },
     {
       "packagePath": "node_modules/@fontsource-variable/space-grotesk",
       "name": "@fontsource-variable/space-grotesk",
       "lockedVersion": "5.3.0",
-      "observedBuiltNoticeVersion": "5.3.0",
       "integrity": "sha512-2IxmvfB08i9vnGB3Ym/AXvhRE+8XOjWMXIyDum03c+tPwH0FUoMNQfGpU8NXPxjbws0Vvss3AH0Zqt4oJBBAdw==",
       "declaredLicense": "OFL-1.1",
       "noticeFileSha256": {
         "LICENSE": "18a4de52385f6b988782639d5d0cc1326e5a8c2de9a7f01d7b20d9aedcc60943"
-      }
+      },
+      "observedBuiltNoticeVersion": "5.3.0"
     },
     {
       "packagePath": "node_modules/@jridgewell/sourcemap-codec",
       "name": "@jridgewell/sourcemap-codec",
       "lockedVersion": "1.6.0",
-      "observedBuiltNoticeVersion": "1.6.0",
       "integrity": "sha512-T7jf+5zgsZHwNJ4lvQ7/aezbyk0nNX+zJVWpmHA7VYsEx7a7qr5Rg5IbtJFqkgze5Y2sruq1RUY8Q837Od7iFw==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "769d154fbde32a915af110b1123650bc79f4cbe675acc66e005265bf069c6c6c"
-      }
+      },
+      "observedBuiltNoticeVersion": "1.6.0"
     },
     {
       "packagePath": "node_modules/@lucide/vue",
       "name": "@lucide/vue",
       "lockedVersion": "1.61.0",
-      "observedBuiltNoticeVersion": "1.61.0",
       "integrity": "sha512-XYclbwUQ6Mvf0UskBG9gJH91BdF3VK4Tt6Pv8PSntwPwNnf357PCQnma4TrzOEdwD49UYCtsTafpfytRIxm1cQ==",
       "declaredLicense": "ISC",
       "noticeFileSha256": {
         "LICENSE": "b495047bd93a9b06913511076f504daba17d5bbeb3e0650f3bb53a4220329c57"
-      }
+      },
+      "observedBuiltNoticeVersion": "1.61.0"
     },
     {
       "packagePath": "node_modules/@noble/ciphers",
       "name": "@noble/ciphers",
       "lockedVersion": "1.3.0",
-      "observedBuiltNoticeVersion": "1.3.0",
       "integrity": "sha512-2I0gnIVPtfnMw9ee9h1dJG7tp81+8Ob3OJb3Mv37rx5L40/b0i7djjCVvGOVqc9AEIQyvyu1i6ypKdFw8R8gQw==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "f36671a5487c9c5050efacb58011c37c24c55a889803cb036cf9d9a6347c1e2d"
-      }
+      },
+      "observedBuiltNoticeVersion": "1.3.0"
     },
     {
       "packagePath": "node_modules/@noble/curves",
       "name": "@noble/curves",
-      "lockedVersion": "1.9.7",
-      "observedBuiltNoticeVersion": "1.9.7",
-      "integrity": "sha512-gbKGcRUYIjA3/zCCNaWDciTMFI0dCkvou3TL8Zmy5Nc7sJ47a0jtOeZoTaMxkuqRo9cRhjOdZJXegxYE5FN/xw==",
+      "lockedVersion": "2.4.0",
+      "integrity": "sha512-P4/62zrgfH33CneE3Dn4WhJVA22YUU0eR51wKIan4NVRvwsA0YnPTwWGpNbpuacSujmSFLvyzpyuR30+fbq2Ew==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec"
-      }
+      },
+      "observedBuiltNoticeVersion": "2.4.0"
     },
     {
       "packagePath": "node_modules/@noble/hashes",
       "name": "@noble/hashes",
-      "lockedVersion": "1.8.0",
-      "observedBuiltNoticeVersion": "1.8.0",
-      "integrity": "sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==",
+      "lockedVersion": "2.4.0",
+      "integrity": "sha512-X5XaVWZIBCT7HHZGm5I7ZQXDwLG+bGXuSrMQAW+7Zvl87h1kmc1ZB1VSRJcpUfoUrGQp4Fkoxm5kZ+Ms+aW+eA==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec"
-      }
+      },
+      "observedBuiltNoticeVersion": "2.4.0"
     },
     {
       "packagePath": "node_modules/@scure/base",
       "name": "@scure/base",
       "lockedVersion": "1.2.6",
-      "observedBuiltNoticeVersion": "1.2.6",
       "integrity": "sha512-g/nm5FgUa//MCj1gV09zTJTaM6KBAHqLN907YVQqf7zC49+DcO4B1so4ZX07Ef10Twr6nuqYEH9GEggFXA4Fmg==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "3239e134eb6e6d64538ca76498c7fcb08a395249dd9d4af9927bf6d0169ee429"
-      }
+      },
+      "observedBuiltNoticeVersion": "1.2.6"
     },
     {
       "packagePath": "node_modules/@scure/bip32",
       "name": "@scure/bip32",
       "lockedVersion": "1.7.0",
-      "observedBuiltNoticeVersion": "1.7.0",
       "integrity": "sha512-E4FFX/N3f4B80AKWp5dP6ow+flD1LQZo/w8UnLGYZO674jS6YnYeepycOOksv+vLPSpgN35wgKgy+ybfTb2SMw==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "1565efd0ec4580bfaa96c7eeaaa9af3791baa1cc562c3bde62d0a055910b9ec7"
-      }
+      },
+      "observedBuiltNoticeVersion": "1.7.0"
+    },
+    {
+      "packagePath": "node_modules/@scure/bip32/node_modules/@noble/curves",
+      "name": "@noble/curves",
+      "lockedVersion": "1.9.7",
+      "integrity": "sha512-gbKGcRUYIjA3/zCCNaWDciTMFI0dCkvou3TL8Zmy5Nc7sJ47a0jtOeZoTaMxkuqRo9cRhjOdZJXegxYE5FN/xw==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec"
+      },
+      "observedBuiltNoticeVersion": "1.9.7"
+    },
+    {
+      "packagePath": "node_modules/@scure/bip32/node_modules/@noble/hashes",
+      "name": "@noble/hashes",
+      "lockedVersion": "1.8.0",
+      "integrity": "sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec"
+      },
+      "observedBuiltNoticeVersion": "1.8.0"
     },
     {
       "packagePath": "node_modules/@scure/bip39",
       "name": "@scure/bip39",
       "lockedVersion": "1.6.0",
-      "observedBuiltNoticeVersion": "1.6.0",
       "integrity": "sha512-+lF0BbLiJNwVlev4eKelw1WWLaiKXw7sSl8T6FvBlWkdX+94aGJ4o8XjUdlyhTCjd8c+B3KT3JfS8P0bLRNU6A==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "1565efd0ec4580bfaa96c7eeaaa9af3791baa1cc562c3bde62d0a055910b9ec7"
-      }
+      },
+      "observedBuiltNoticeVersion": "1.6.0"
+    },
+    {
+      "packagePath": "node_modules/@scure/bip39/node_modules/@noble/hashes",
+      "name": "@noble/hashes",
+      "lockedVersion": "1.8.0",
+      "integrity": "sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec"
+      },
+      "observedBuiltNoticeVersion": "1.8.0"
     },
     {
       "packagePath": "node_modules/@vue/compiler-core",
       "name": "@vue/compiler-core",
       "lockedVersion": "3.5.44",
-      "observedBuiltNoticeVersion": "3.5.44",
       "integrity": "sha512-k34nCytbK8PQ1gR2mGROYOw6Pnv/mumqIdrZ3x2tbyXZDWm7ViKGLTfdB+DRrWqEQsLgGJvn0WN9jBif5zCTLQ==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "1bb85cc9b13b81ef41c81c51866172fc345e0503c86726a6755b796590b70175"
-      }
+      },
+      "observedBuiltNoticeVersion": "3.5.44"
     },
     {
       "packagePath": "node_modules/@vue/compiler-core/node_modules/estree-walker",
       "name": "estree-walker",
       "lockedVersion": "2.0.2",
-      "observedBuiltNoticeVersion": "2.0.2",
       "integrity": "sha512-Rfkk/Mp/DL7JVje3u18FxFujQlTNR2q6QfMSMB7AvCBx91NGj/ba3kCfza0f6dVDbw7YlRf/nDrn7pQrCCyQ/w==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "8a6dcbabe7179f9c8489c08a7d874d0f1e093ae7449e03756ccf87cb9d0e296e"
-      }
+      },
+      "observedBuiltNoticeVersion": "2.0.2"
     },
     {
       "packagePath": "node_modules/@vue/compiler-dom",
       "name": "@vue/compiler-dom",
       "lockedVersion": "3.5.44",
-      "observedBuiltNoticeVersion": "3.5.44",
       "integrity": "sha512-W5AoBFWdw1lQAKiHowkfgFKFab82oSRT6sGsPfw/q1GRjsy/ZJFLHGhJyBRIFN9APLTUduDH9U2JAiPOIyKuYg==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "1bb85cc9b13b81ef41c81c51866172fc345e0503c86726a6755b796590b70175"
-      }
+      },
+      "observedBuiltNoticeVersion": "3.5.44"
     },
     {
       "packagePath": "node_modules/@vue/compiler-sfc",
       "name": "@vue/compiler-sfc",
       "lockedVersion": "3.5.44",
-      "observedBuiltNoticeVersion": "3.5.44",
       "integrity": "sha512-dzHmQ4jXTpdr5FjIQUeykVakN/uzqFbUo9/C5ikBFg3a3PeM6uRxeczx1ZbXBML0/zJstEh3ygYipzR5Z7b2Pw==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "1bb85cc9b13b81ef41c81c51866172fc345e0503c86726a6755b796590b70175"
-      }
+      },
+      "observedBuiltNoticeVersion": "3.5.44"
     },
     {
       "packagePath": "node_modules/@vue/compiler-sfc/node_modules/estree-walker",
       "name": "estree-walker",
       "lockedVersion": "2.0.2",
-      "observedBuiltNoticeVersion": "2.0.2",
       "integrity": "sha512-Rfkk/Mp/DL7JVje3u18FxFujQlTNR2q6QfMSMB7AvCBx91NGj/ba3kCfza0f6dVDbw7YlRf/nDrn7pQrCCyQ/w==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "8a6dcbabe7179f9c8489c08a7d874d0f1e093ae7449e03756ccf87cb9d0e296e"
-      }
+      },
+      "observedBuiltNoticeVersion": "2.0.2"
     },
     {
       "packagePath": "node_modules/@vue/compiler-ssr",
       "name": "@vue/compiler-ssr",
       "lockedVersion": "3.5.44",
-      "observedBuiltNoticeVersion": "3.5.44",
       "integrity": "sha512-xr5gb1JVHlfXJwSlRz1FeP6uxoazdzHuMTVLE7up+4Vrqxk219CvxLPxD9NXBt47yvZW7+p4DXfyp4O1fkByIA==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "1bb85cc9b13b81ef41c81c51866172fc345e0503c86726a6755b796590b70175"
-      }
+      },
+      "observedBuiltNoticeVersion": "3.5.44"
     },
     {
       "packagePath": "node_modules/@vue/reactivity",
       "name": "@vue/reactivity",
       "lockedVersion": "3.5.44",
-      "observedBuiltNoticeVersion": "3.5.44",
       "integrity": "sha512-u+QJdKeBBEADkPdevsL+6E12QlYVfBD8Zcw5qjDQKtamI6l14KyqazJMobhCKelhWN5zpyKUiEDoTyHE93cqWw==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "1bb85cc9b13b81ef41c81c51866172fc345e0503c86726a6755b796590b70175"
-      }
+      },
+      "observedBuiltNoticeVersion": "3.5.44"
     },
     {
       "packagePath": "node_modules/@vue/runtime-core",
       "name": "@vue/runtime-core",
       "lockedVersion": "3.5.44",
-      "observedBuiltNoticeVersion": "3.5.44",
       "integrity": "sha512-uEa/ndwjhrrhnOfb2p+sZy6zeoamJOISqaLSJGk/8R6nABT1ZldpzcJoPzKj+zHVomVBPcmQYyC2r4LtvDV6CQ==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "1bb85cc9b13b81ef41c81c51866172fc345e0503c86726a6755b796590b70175"
-      }
+      },
+      "observedBuiltNoticeVersion": "3.5.44"
     },
     {
       "packagePath": "node_modules/@vue/runtime-dom",
       "name": "@vue/runtime-dom",
       "lockedVersion": "3.5.44",
-      "observedBuiltNoticeVersion": "3.5.44",
       "integrity": "sha512-3fc4ARcXVhVBaJ3ujWiNZJARD6pkyRcwG+ZYhMzjKtKUp7MAY0HLwr7r3Smep3Li6ZaWT6ewdmx8XqdaD5oNZg==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "1bb85cc9b13b81ef41c81c51866172fc345e0503c86726a6755b796590b70175"
-      }
+      },
+      "observedBuiltNoticeVersion": "3.5.44"
     },
     {
       "packagePath": "node_modules/@vue/server-renderer",
       "name": "@vue/server-renderer",
       "lockedVersion": "3.5.44",
-      "observedBuiltNoticeVersion": "3.5.44",
       "integrity": "sha512-R4S1UoH4h5Frrauv8Z5XE5TxV9oBiUSgWIC4TyVK1FK+RocRnOLwFA5Xcmo2011RlgJp+AbZCnw6afrhlgRuUQ==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "1bb85cc9b13b81ef41c81c51866172fc345e0503c86726a6755b796590b70175"
-      }
+      },
+      "observedBuiltNoticeVersion": "3.5.44"
     },
     {
       "packagePath": "node_modules/@vue/shared",
       "name": "@vue/shared",
       "lockedVersion": "3.5.44",
-      "observedBuiltNoticeVersion": "3.5.44",
       "integrity": "sha512-H82XLH0DjmSOdbEwO15x3QTo1f5PWEtv237eLpYKc0mqLu+B8hnq16lFWmuBmNurkeiG3wr+oM1FhOll/YVFRg==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "1bb85cc9b13b81ef41c81c51866172fc345e0503c86726a6755b796590b70175"
-      }
+      },
+      "observedBuiltNoticeVersion": "3.5.44"
     },
     {
       "packagePath": "node_modules/abitype",
       "name": "abitype",
       "lockedVersion": "1.2.3",
-      "observedBuiltNoticeVersion": "1.2.3",
       "integrity": "sha512-Ofer5QUnuUdTFsBRwARMoWKOH1ND5ehwYhJ3OJ/BQO+StkwQjHw0XyVh4vDttzHB7QOFhPHa/o413PJ82gU/Tg==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "e7f5360a60628940fee8653802d7221d2b9575e26268be2a3a2fdbc04aa84321"
-      }
+      },
+      "observedBuiltNoticeVersion": "1.2.3"
     },
     {
       "packagePath": "node_modules/bech32",
       "name": "bech32",
       "lockedVersion": "2.0.0",
-      "observedBuiltNoticeVersion": "2.0.0",
       "integrity": "sha512-LcknSilhIGatDAsY1ak2I8VtGaHNhgMSYVxFrGLXv+xLHytaKZKcaUJJUE7qmBr7h33o5YQwP55pMI0xmkpJwg==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "e392496fe60945ccaffa39f0441504355aebd85a0cd428ad4e9173f763b77e9d"
-      }
+      },
+      "observedBuiltNoticeVersion": "2.0.0"
     },
     {
       "packagePath": "node_modules/csstype",
       "name": "csstype",
       "lockedVersion": "3.2.3",
-      "observedBuiltNoticeVersion": "3.2.3",
       "integrity": "sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "11d55bd4541c75ee7879547ac49089c489163dae49551389713c3d026cab383e"
-      }
+      },
+      "observedBuiltNoticeVersion": "3.2.3"
     },
     {
       "packagePath": "node_modules/entities",
       "name": "entities",
       "lockedVersion": "7.0.1",
-      "observedBuiltNoticeVersion": "7.0.1",
       "integrity": "sha512-TWrgLOFUQTH994YUyl1yT4uyavY5nNB5muff+RtWaqNVCAK408b5ZnnbNAUEWLTCpum9w6arT70i1XdQ4UeOPA==",
       "declaredLicense": "BSD-2-Clause",
       "noticeFileSha256": {
         "LICENSE": "cb992345949ccd6e8394b2cd6c465f7b897c864f845937dbf64e8997f389e164"
-      }
+      },
+      "observedBuiltNoticeVersion": "7.0.1"
     },
     {
       "packagePath": "node_modules/eventemitter3",
       "name": "eventemitter3",
       "lockedVersion": "5.0.1",
-      "observedBuiltNoticeVersion": "5.0.1",
       "integrity": "sha512-GWkBvjiSZK87ELrYOSESUYeVIc9mvLLf/nXalMOS5dYrgZq9o5OVkbZAVM06CVxYsCwH9BDZFPlQTlPA1j4ahA==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "3aecc12b1cb28832b5f65ab64291de96568c3f236a74d646281b4491f7bcadbf"
-      }
+      },
+      "observedBuiltNoticeVersion": "5.0.1"
     },
     {
       "packagePath": "node_modules/isows",
       "name": "isows",
       "lockedVersion": "1.0.7",
-      "observedBuiltNoticeVersion": "1.0.7",
       "integrity": "sha512-I1fSfDCZL5P0v33sVqeTDSpcstAg/N+wF5HS033mogOVIp4B+oHC7oOCsA3axAbBSGTJ8QubbNmnIRN/h8U7hg==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "091d17ae5f625ffeb381e7109daaf6c492dd32502d612d8ecd24e2ddf6d16b74"
-      }
+      },
+      "observedBuiltNoticeVersion": "1.0.7"
     },
     {
       "packagePath": "node_modules/magic-string",
       "name": "magic-string",
       "lockedVersion": "0.30.21",
-      "observedBuiltNoticeVersion": "0.30.21",
       "integrity": "sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "1cbe51b907662f6cb1492b16c359384a595180bf0e4d101603ed525e75c4e484"
-      }
+      },
+      "observedBuiltNoticeVersion": "0.30.21"
     },
     {
       "packagePath": "node_modules/nanoid",
       "name": "nanoid",
       "lockedVersion": "3.3.20",
-      "observedBuiltNoticeVersion": "3.3.20",
       "integrity": "sha512-uKdg2G3GNCKQn9byYOpxbGqrT2fGO5KRt5J/8b3pok8rT6qxGWF6hxMyJiEYtAf+FVyYuD9hRaDqX5uPFYJ4ZQ==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "da4db1480d9beea3483a2eda5c53b22238d0827d57da162b48f122e04d2d9987"
-      }
+      },
+      "observedBuiltNoticeVersion": "3.3.20"
     },
     {
       "packagePath": "node_modules/ox",
       "name": "ox",
       "lockedVersion": "0.14.57",
-      "observedBuiltNoticeVersion": "0.14.57",
       "integrity": "sha512-CPF6aEFyAuqgL0x7VaFM0vI2/CUd5Qk8+BIL6OnViPw+gF07O/VAhqEPOPw5GYnYPwomIk8mD91gTcQ1RAtupA==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "84ecb61c470de66e88a79c7d0ee8ce068e743693a4c249017545b4c8d4f9984d"
-      }
+      },
+      "observedBuiltNoticeVersion": "0.14.57"
     },
     {
       "packagePath": "node_modules/ox/node_modules/@noble/curves",
       "name": "@noble/curves",
       "lockedVersion": "1.9.1",
-      "observedBuiltNoticeVersion": "1.9.1",
       "integrity": "sha512-k11yZxZg+t+gWvBbIswW0yoJlu8cHOC7dhunwOzoWH/mXGBiYyR4YY6hAEK/3EUs4UpB8la1RfdRpeGsFHkWsA==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec"
-      }
+      },
+      "observedBuiltNoticeVersion": "1.9.1"
+    },
+    {
+      "packagePath": "node_modules/ox/node_modules/@noble/hashes",
+      "name": "@noble/hashes",
+      "lockedVersion": "1.8.0",
+      "integrity": "sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec"
+      },
+      "observedBuiltNoticeVersion": "1.8.0"
     },
     {
       "packagePath": "node_modules/picocolors",
       "name": "picocolors",
       "lockedVersion": "1.1.1",
-      "observedBuiltNoticeVersion": "1.1.1",
       "integrity": "sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==",
       "declaredLicense": "ISC",
       "noticeFileSha256": {
         "LICENSE": "6582629e2979466878f6014313dcc2f3756c9616148682227ce3063dde310750"
-      }
+      },
+      "observedBuiltNoticeVersion": "1.1.1"
     },
     {
       "packagePath": "node_modules/postcss",
       "name": "postcss",
       "lockedVersion": "8.5.31",
-      "observedBuiltNoticeVersion": "8.5.31",
       "integrity": "sha512-YUbWYCgErwnMAVkjUnYa+KlMBzGpHwiIt/DE7f0G33AuX2LH9UcTk6KgWxd3zRU+pN3u/C+Xl3EnMLM4Hea7Sg==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "5be1f3465bba68a626777f984878814aaf35e7ef8e9fd314d469bcf887050fb8"
-      }
+      },
+      "observedBuiltNoticeVersion": "8.5.31"
     },
     {
       "packagePath": "node_modules/source-map-js",
       "name": "source-map-js",
       "lockedVersion": "1.2.2",
-      "observedBuiltNoticeVersion": "1.2.2",
       "integrity": "sha512-KGj/8Y43x35aZVDtt+J4mK1hoLGHULMYfSkODJNQjNDC3oW1PqPoxMwo0pLUsWM/UEGzON/NxeHywEfNXNP3Vw==",
       "declaredLicense": "BSD-3-Clause",
       "noticeFileSha256": {
         "LICENSE": "6cb0631f71c7749763fd3dd1d5bee52dd1070ec17f2edc1710079ad070bd2fbd"
-      }
+      },
+      "observedBuiltNoticeVersion": "1.2.2"
     },
     {
       "packagePath": "node_modules/typescript",
       "name": "typescript",
       "lockedVersion": "5.9.3",
-      "observedBuiltNoticeVersion": "5.9.3",
       "integrity": "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==",
       "declaredLicense": "Apache-2.0",
       "noticeFileSha256": {
         "LICENSE.txt": "a7d00bfd54525bc694b6e32f64c7ebcf5e6b7ae3657be5cc12767bce74654a47"
-      }
+      },
+      "observedBuiltNoticeVersion": "5.9.3"
     },
     {
       "packagePath": "node_modules/viem",
       "name": "viem",
       "lockedVersion": "2.57.11",
-      "observedBuiltNoticeVersion": "2.57.11",
       "integrity": "sha512-kvcBGXzIGmZu3GqaA83ZOLzVC57YO7WCgQrGcUHNKqZ8Cjqc9vV//uGna4Nhv0NGHn2gekw1FNdSvQePNnYePQ==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "091d17ae5f625ffeb381e7109daaf6c492dd32502d612d8ecd24e2ddf6d16b74"
-      }
+      },
+      "observedBuiltNoticeVersion": "2.57.11"
     },
     {
       "packagePath": "node_modules/viem/node_modules/@noble/curves",
       "name": "@noble/curves",
       "lockedVersion": "1.9.1",
-      "observedBuiltNoticeVersion": "1.9.1",
       "integrity": "sha512-k11yZxZg+t+gWvBbIswW0yoJlu8cHOC7dhunwOzoWH/mXGBiYyR4YY6hAEK/3EUs4UpB8la1RfdRpeGsFHkWsA==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec"
-      }
+      },
+      "observedBuiltNoticeVersion": "1.9.1"
+    },
+    {
+      "packagePath": "node_modules/viem/node_modules/@noble/hashes",
+      "name": "@noble/hashes",
+      "lockedVersion": "1.8.0",
+      "integrity": "sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec"
+      },
+      "observedBuiltNoticeVersion": "1.8.0"
     },
     {
       "packagePath": "node_modules/vue",
       "name": "vue",
       "lockedVersion": "3.5.44",
-      "observedBuiltNoticeVersion": "3.5.44",
       "integrity": "sha512-dvvmaOCG7lAMkJTPqPwWeGMsPS6DIsFsfZDUgBp9V6mHf9b3+/wyVwYR4Es+WV6uJC0FKRxp81Obcq0ZwUcGFQ==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "1bb85cc9b13b81ef41c81c51866172fc345e0503c86726a6755b796590b70175"
-      }
+      },
+      "observedBuiltNoticeVersion": "3.5.44"
     },
     {
       "packagePath": "node_modules/ws",
       "name": "ws",
       "lockedVersion": "8.21.0",
-      "observedBuiltNoticeVersion": "8.21.0",
       "integrity": "sha512-Vsp28b7DRcimFQvrqu2Wek3z1iYxDCWqHYB8Qsnk/S4RfaCQzPGPyBNuVjJV3cd6UiKtUtp6sNM77gWvzcCH+g==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "2b29dcfe0d6471f7e8c92c5fb38c9f93edee10330937055440192f1832b1ecef"
-      }
+      },
+      "observedBuiltNoticeVersion": "8.21.0"
     },
     {
       "packagePath": "node_modules/zod",
       "name": "zod",
       "lockedVersion": "4.6.7",
-      "observedBuiltNoticeVersion": "4.6.7",
       "integrity": "sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "3f1189b28e3866e0d979968d466b78f813f76827cfdca1fbb124cc0a5c8841f8"
-      }
+      },
+      "observedBuiltNoticeVersion": "4.6.7"
     }
   ]
 }
