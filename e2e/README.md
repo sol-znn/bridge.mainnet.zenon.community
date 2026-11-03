@@ -6,6 +6,17 @@ All keys here are committed public fixtures. Never fund them outside the isolate
 
 Clone `https://github.com/sol-znn/go-zenon`, check out `616f0a61ebc8562846965822f94976e531e0937c`, and set `GO_ZENON_DIR` to that checkout. Working-tree edits are excluded: the build exports that exact commit and checks its tree against `lab/pins.json`. Review the fork and the explicit devnet bridge overlay; this is not an official-mainnet qualification.
 
+## BIP39 package compatibility
+
+The Node-only lab wallet supports the English wordlist exports in BIP39 1.6.0
+and 2.4.0. Qualification installs each exact published version in an isolated
+temporary directory on Node 22, 24 and 26.5. The six cases verify the complete
+wordlist, entropy round trips and two published seed vectors. Reports retain
+source, runtime, lockfile and package-integrity digests without phrases or seeds.
+The lockfile pins 2.4.0 since #20; the 1.6.0 cases keep the old layout working
+while viem still depends on it. These fixtures do not change the locked version
+or qualify real wallets.
+
 ## Native lab
 
 Install Go 1.27.1 and Anvil 1.8.5. Verify the appropriate official archive SHA256 from `lab/pins.json`, set `LAB_GO_BIN` if Go is not on PATH, and set `ANVIL_BIN` to the extracted executable. Install the pinned Chrome for Testing headless shell with the lockfile's `node_modules/.bin/browsers install chrome-headless-shell@155.0.8059.39 --path <tools-directory>` and set `CHROME_PATH` to it.
@@ -314,12 +325,70 @@ are excluded. Its small artifact allows setup failures to be diagnosed without
 repeating completed native tests.
 
 The pinned Linux headless-shell package omits `chrome_crashpad_handler`. The
-`info` job installs only that member from the official full Chrome package at the
-same version, using a pinned 924,320-byte HTTP range, archive identity, compressed
+`browser-transport` and `info` jobs install only that member from the official
+full Chrome package at the same version, using a pinned 924,320-byte HTTP range, archive identity, compressed
 and uncompressed SHA-256 values, exact sizes and ELF architecture. It refuses a
 full-archive response or an unknown existing helper. The pinned headless browser
 must retain its exact executable digest. Neither a second browser nor a raw dump
 is published. The manifest records the actual component input and reuse status.
+
+### Updating the offline reporter pin
+
+`lab/browser-reporter.pin.json` describes one member of the official Linux
+Chrome ZIP. It is not a reusable offset table: every browser version needs a
+fresh archive identity, ZIP layout and executable digest. Update it in the same
+reviewed change as the browser version in the workflows, lab pins and reporter
+validator. Search for the previous version throughout the repository; do not
+relax `verifyReporterPin()` to accept arbitrary versions.
+
+1. Select the exact Chrome for Testing version and the official `linux64`
+   `chrome-linux64.zip` URL. Record the archive's total byte length and ETag.
+   Use bounded, identity-encoded range requests under the artifact cache's
+   ownership, quota and lease rules. Reject redirects, a full-archive response,
+   changed identities and incomplete output. The ETag is an HTTP identity
+   validator, not a substitute for either SHA-256 digest below.
+2. Read the ZIP end-of-central-directory record and its central directory with
+   explicit bounds. Require one exact
+   `chrome-linux64/chrome_crashpad_handler` entry, unencrypted raw DEFLATE
+   (method 8). Record its CRC-32, compressed size, uncompressed size and local
+   header offset. Refuse unsupported ZIP64 or multi-disk layouts rather than
+   guessing offsets. A bounded tail request is enough only when it contains the
+   complete directory; never treat a partial directory as a complete listing.
+3. Read and validate the local header and exact member name. If its offset is
+   `offset`, the payload begins at
+   `offset + 30 + fileNameLength + extraFieldLength`; the variable lengths come
+   from that header, not from assumptions about earlier versions. Set
+   `rangeStart` to that position and
+   `rangeEnd = rangeStart + compressedBytes - 1`. Check that the entire member
+   fits before the central directory and within `archiveBytes`.
+4. Fetch only that compressed range, using `If-Match` with the recorded ETag.
+   Require HTTP 206, the exact `Content-Range`, `Content-Length`, ETag and no
+   content encoding, as `readPinnedReporterRange()` does. Calculate
+   `compressedSha256` over the raw compressed bytes. Inflate with an explicit
+   output bound, verify the central-directory size and CRC-32, then calculate
+   `sha256` over the complete inflated member. Check the existing 64-bit,
+   little-endian x86-64 ELF requirements in `decodeReporterComponent()`.
+   Current limits are 512 MiB per archive, 4 MiB compressed and 8 MiB inflated
+   per reporter; exceeding them requires a separately reviewed policy change.
+5. Obtain the **headless-shell executable** for the same version/platform
+   through the pinned browser installer and record its exact SHA-256 as
+   `browserSha256`. Do not hash the full Chrome executable instead, replace the
+   headless executable or copy a digest from another platform. Keep the
+   existing scope value and populate every pin field from these measured
+   inputs. Retain source/version, HTTP identities, lengths, digests and actual
+   transport outcomes in the private qualification record.
+6. Review the pin and matching version guards together. Run the reporter
+   component unit tests and Python parser controls, then require fresh Linux
+   `browser-transport`, native and Docker qualification for the changed source.
+   The standalone job must pass the owned renderer crash calibration, direct
+   network allow/deny control and all 48 fresh transport starts. Check the
+   reporter manifest against the reviewed pin and confirm that the browser
+   digest is unchanged by installation. Unit tests alone do not qualify a new
+   browser or reporter, and a successful old-version run does not qualify it.
+
+Keep one protected object per digest and omit raw dumps from every upload.
+Regeneration is a maintainer operation; routine CI only consumes the reviewed
+pin and must fail on a different archive, member, executable or existing helper.
 
 A failed E2E suite remains fatal while subsequent read-only diagnostic probes
 may still run against the same owned lab and an already validated bundle. Each
