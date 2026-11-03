@@ -34,7 +34,7 @@
   },
   "devDependencies": {
     "@openzeppelin/contracts": "^4.9.6",
-    "@scure/bip39": "^1.6.0",
+    "@scure/bip39": "^2.4.0",
     "@tailwindcss/vite": "^4.1.0",
     "@types/node": "^22.10.0",
     "@vitejs/plugin-vue": "^6.0.1",
