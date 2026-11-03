@@ -10,7 +10,7 @@ import { ed25519 } from '@noble/curves/ed25519.js'
 import { hmac } from '@noble/hashes/hmac.js'
 import { sha512 } from '@noble/hashes/sha2.js'
 import { mnemonicToSeedSync, validateMnemonic } from '@scure/bip39'
-import { wordlist } from '@scure/bip39/wordlists/english'
+import { loadEnglishWordlist } from './bip39-wordlist.mjs'
 
 import { addressFromPublicKey, concat, formatAddress } from '../../src/znn/primitives.ts'
 
@@ -18,6 +18,7 @@ import { addressFromPublicKey, concat, formatAddress } from '../../src/znn/primi
 export const COIN_TYPE = 73404
 
 const HARDENED = 0x80000000
+const wordlist = loadEnglishWordlist()
 
 /**
  * SLIP-0010 ed25519 derivation.
