@@ -120,8 +120,9 @@ The signing drivers refuse to start until the fixed loopback RPC endpoints
 report Zenon chain 322 and EVM chain 31337. They repeat this check before
 requesting and approving a send. `BRIDGE_URL` must use HTTP with a literal
 loopback host; credentials, query strings and fragments are refused. A page
-redirect to another origin is refused. The mock EVM wallet only relays
-allowlisted reads, after checking the actual local EVM chain; signing,
+redirect to another origin is refused. Same-origin application routes and
+callback parameters remain allowed after navigation. The mock EVM wallet
+relays only allowlisted reads, after checking the actual local EVM chain; signing,
 transaction submission and administrative RPC methods are refused.
 
 Use a new, flat ASCII label for each run. Existing output directories and

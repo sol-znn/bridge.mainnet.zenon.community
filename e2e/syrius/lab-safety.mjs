@@ -18,18 +18,20 @@ export function validateLabLabel(label) {
   return label
 }
 
-export function validateBridgeUrl(value) {
+function loopbackUrl(value, navigation = false) {
   if (typeof value !== 'string' || value.length > 2048 || /[\s\\]/.test(value)) throw refuse()
   let url
   try { url = new URL(value) } catch { throw refuse() }
-  const authority = value.match(/^http:\/\/([^/]+)(?:\/|$)/)?.[1]
+  const authority = value.match(/^http:\/\/([^/?#]+)(?:[/?#]|$)/)?.[1]
   if (!authority || !/^(127\.0\.0\.1|localhost|\[::1\])(?::[1-9][0-9]{0,4})?$/.test(authority) ||
-      url.protocol !== 'http:' || url.username || url.password || url.search || url.hash) throw refuse()
+      url.protocol !== 'http:' || url.username || url.password || (!navigation && (url.search || url.hash))) throw refuse()
   return url.href
 }
 
+export function validateBridgeUrl(value) { return loopbackUrl(value) }
+
 export function assertPageOrigin(actual, expected) {
-  if (new URL(validateBridgeUrl(actual)).origin !== new URL(validateBridgeUrl(expected)).origin) throw refuse()
+  if (new URL(loopbackUrl(actual, true)).origin !== new URL(validateBridgeUrl(expected)).origin) throw refuse()
 }
 
 async function rpc(method, params, endpoint, fetchImpl, allowError = false) {

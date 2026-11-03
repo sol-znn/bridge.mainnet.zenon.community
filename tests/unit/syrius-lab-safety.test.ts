@@ -92,9 +92,15 @@ describe('isolated wallet lab preflight', () => {
 })
 
 describe('mock EVM wallet relay', () => {
+  it('allows same-origin application routes and callback parameters while keeping the initial URL strict', () => {
+    for (const suffix of ['#/', '#/activity', '?syrius=1&id=fixture', '?syrius=1#/bridge']) expect(() => assertPageOrigin(pageUrl + suffix, pageUrl)).not.toThrow()
+    expect(() => assertPageOrigin('http://127.0.0.1:4175/?syrius=1', pageUrl)).toThrow()
+    expect(() => assertPageOrigin(pageUrl, pageUrl + '#/activity')).toThrow()
+  })
+
   it('forwards a read only after checking the actual lab chain', async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(reply('0x7a69')).mockResolvedValueOnce(reply('0x0'))
-    const result = await forwardEvmRead(JSON.stringify({ method: 'eth_getBalance', params: ['0x' + '12'.repeat(20), 'latest'] }), pageUrl, pageUrl, fetcher)
+    const result = await forwardEvmRead(JSON.stringify({ method: 'eth_getBalance', params: ['0x' + '12'.repeat(20), 'latest'] }), pageUrl + '#/bridge', pageUrl, fetcher)
     expect(JSON.parse(result).result).toBe('0x0')
     expect(fetcher.mock.calls.map(([, options]) => JSON.parse(String(options?.body)).method)).toEqual(['eth_chainId', 'eth_getBalance'])
   })
