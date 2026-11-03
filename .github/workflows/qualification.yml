@@ -44,7 +44,6 @@ jobs:
         node: ['22', '24', '26.5.0']
         bip39: ['1.6.0', '2.4.0']
     env:
-      BIP39_FIXTURE_ROOT: ${{ runner.temp }}/bridge-bip39-fixture
       EXPECTED_BIP39_VERSION: ${{ matrix.bip39 }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -55,6 +54,8 @@ jobs:
           node-version: ${{ matrix.node }}
       - name: Install the exact isolated BIP39 package
         run: |
+          BIP39_FIXTURE_ROOT="$RUNNER_TEMP/bridge-bip39-fixture"
+          printf 'BIP39_FIXTURE_ROOT=%s\n' "$BIP39_FIXTURE_ROOT" >> "$GITHUB_ENV"
           mkdir "$BIP39_FIXTURE_ROOT"
           printf '%s\n' '{"name":"bridge-bip39-compatibility-fixture","private":true}' > "$BIP39_FIXTURE_ROOT/package.json"
           npm install --prefix "$BIP39_FIXTURE_ROOT" --save-exact --ignore-scripts --no-audit --no-fund "@scure/bip39@$EXPECTED_BIP39_VERSION"
