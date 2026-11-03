@@ -1,7 +1,8 @@
 import fs from 'node:fs'
 import http from 'node:http'
-import path from 'node:path'
 import puppeteer from 'puppeteer-core'
+import { assertWalletLab, assertPageOrigin, createResultsDirectory, forwardEvmRead } from './lab-safety.mjs'
+import { appAssetRoot, openAppAsset } from './app-assets.mjs'
 
 const [label, appDir] = process.argv.slice(2)
 const MNEMONIC = 'abstract affair idle position alien fluid board ordinary exist afraid chapter wood wood guide sun walnut crew perfect place firm poverty model side million'
@@ -9,28 +10,34 @@ const INDEX3 = 'z1qp3yph55qgresyytz83anynr2f4z39x2z3ej3e'
 const NODE = 'ws://127.0.0.1:46998', NODE_HTTP = 'http://127.0.0.1:46997', CHAIN = 322
 const PAGE_URL = process.env.BRIDGE_URL || 'http://127.0.0.1:4174/'
 const APP_PORT = Number(process.env.APP_PORT || 47110)
-const EVM_RPC = 'http://127.0.0.1:46545', EVM_USER = '0x70997970C51812dc3A010C7d01b50e0d17dc79C8'
+if (!Number.isSafeInteger(APP_PORT) || APP_PORT < 1 || APP_PORT > 65535) throw new Error('Invalid app lab port')
+const assetRoot = appAssetRoot(appDir)
+const EVM_USER = '0x70997970C51812dc3A010C7d01b50e0d17dc79C8'
 const PHONE_UA = 'Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Mobile Safari/537.36'
-const out = `${process.env.RESULTS_DIR || 'e2e/.state/syrius'}/${label}`
-fs.mkdirSync(out, { recursive: true })
+await assertWalletLab({ label, pageUrl: PAGE_URL })
+const out = createResultsDirectory(label)
 const log = (...a) => { const line = `${new Date().toISOString().slice(11, 19)} [${label}] ${a.join(' ')}`; console.log(line); fs.appendFileSync(`${out}/log.txt`, line + '\n') }
 const wait = (ms) => new Promise((r) => setTimeout(r, ms))
 const errors = []
 
-const types = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2', '.wasm': 'application/wasm' }
 const server = http.createServer((req, res) => {
-  const rel = decodeURIComponent(new URL(req.url, 'http://x').pathname).replace(/^\/+/, '') || 'index.html'
-  const file = path.join(appDir, path.normalize(rel))
-  if (!file.startsWith(appDir) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.writeHead(404); res.end(); return }
-  res.writeHead(200, { 'content-type': types[path.extname(file)] || 'application/octet-stream' })
-  fs.createReadStream(file).pipe(res)
-}).listen(APP_PORT, '127.0.0.1')
+  const asset = openAppAsset(assetRoot, req.url)
+  if (!asset) { res.writeHead(404); res.end(); return }
+  res.writeHead(200, { 'content-type': asset.type, 'content-length': asset.bytes, 'x-content-type-options': 'nosniff' })
+  const stream = fs.createReadStream('', { fd: asset.fd, autoClose: true })
+  res.once('close', () => stream.destroy())
+  stream.on('error', () => res.destroy()).pipe(res)
+})
+await new Promise((resolve, reject) => {
+  server.once('error', () => reject(new Error('App lab server could not bind')))
+  server.listen(APP_PORT, '127.0.0.1', resolve)
+})
 const APP = `http://127.0.0.1:${APP_PORT}/index.html`
 
 const browser = await puppeteer.launch({
   executablePath: process.env.CHROMIUM_PATH || '/usr/bin/chromium', headless: true, pipe: true, protocolTimeout: 600_000,
   args: ['--no-sandbox', '--window-size=1280,900', '--screen-info={0,0 1920x1080}'],
-})
+}).catch((error) => { server.close(); throw error })
 let step = 'start'
 const textOf = (p) => p.evaluate(() => document.body.innerText)
 const shot = (p, name) => p.screenshot({ path: `${out}/${name}.png` }).catch(() => {})
@@ -100,11 +107,7 @@ try {
   await page.setViewport({ width: 400, height: 860, isMobile: true, hasTouch: true })
   page.on('pageerror', (e) => errors.push(String(e.message || e)))
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()))
-  await page.exposeFunction('__labEvmRequest', async (json) => {
-    const { method, params } = JSON.parse(json)
-    const res = await fetch(EVM_RPC, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }) })
-    return JSON.stringify(await res.json())
-  })
+  await page.exposeFunction('__labEvmRequest', (json) => forwardEvmRead(json, page.url(), PAGE_URL))
   await page.evaluateOnNewDocument((evmAddress) => {
     window.__links = []
     navigation.addEventListener('navigate', (e) => {
@@ -127,6 +130,7 @@ try {
     announce()
   }, EVM_USER)
   await page.goto(PAGE_URL, { waitUntil: 'domcontentloaded' })
+  assertPageOrigin(page.url(), PAGE_URL)
   await page.waitForFunction(() => document.body.innerText.includes('Anvil'), { timeout: 90000 })
   await page.waitForFunction(() => window.__bridge?.syrius.app === true, { timeout: 20000 })
   log('bridge in app mode', await page.evaluate(() => JSON.stringify(window.__bridge.syrius)))
@@ -162,6 +166,10 @@ try {
       }
       await shot(app, `2-${what}-asked`)
       log(`${what} asked:`, (await textOf(app)).replace(/\s+/g, ' ').slice(0, 200))
+      if (what === 'send') {
+        assertPageOrigin(page.url(), PAGE_URL)
+        await assertWalletLab({ label, pageUrl: PAGE_URL })
+      }
       await clickText(app, /^(Connect|Approve|Confirm|Sign|Send|Allow)/, 'button')
     }
     const asked = Date.now()
@@ -210,6 +218,8 @@ try {
   })
   await click('[data-testid="bridge-action"]')
   await click('[data-testid="terms-all"]')
+  assertPageOrigin(page.url(), PAGE_URL)
+  await assertWalletLab({ label, pageUrl: PAGE_URL })
   await click('[data-testid="terms-continue"]')
   await roundTrip('send', true)
   let op = null

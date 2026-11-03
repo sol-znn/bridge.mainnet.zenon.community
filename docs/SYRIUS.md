@@ -116,6 +116,31 @@ and a small Marionette client (Firefox). They need the lab from
 lab's loopback. Logs and screenshots go to `e2e/.state/syrius/<label>/`
 (`RESULTS_DIR`). Each run spends 2 ZNN from account 3, so run one at a time.
 
+The signing drivers refuse to start until the fixed loopback RPC endpoints
+report Zenon chain 322 and EVM chain 31337. They repeat this check before
+requesting and approving a send. `BRIDGE_URL` must use HTTP with a literal
+loopback host; credentials, query strings and fragments are refused. A page
+redirect to another origin is refused. The mock EVM wallet only relays
+allowlisted reads, after checking the actual local EVM chain; signing,
+transaction submission and administrative RPC methods are refused.
+
+Use a new, flat ASCII label for each run. Existing output directories and
+symlinked ancestors are refused so earlier screenshots, logs and profiles
+remain intact. `nodes.mjs` uses the label `nodes`; select a fresh results root
+to run it again. The app server serves only regular assets inside the selected
+physical build directory, with an allowlist of content types. It refuses
+symlinks, hard-linked files and paths that escape that directory.
+
+Firefox uses a fresh profile inside the run's results directory. It asks the
+system to assign a Marionette port and reads `MarionetteActivePort` only from
+that profile while its own browser process is alive. It never tries the
+default port or reuses an existing profile. The client also checks the Gecko
+protocol greeting. See Mozilla's [Marionette preferences](https://firefox-source-docs.mozilla.org/remote/marionette/Prefs.html).
+
+The guard tests use synthetic RPC responses, file fixtures and protocol peers.
+They do not rerun the wallet versions above or establish real-phone, real-wallet,
+economic, operator or production acceptance.
+
 ```
 node e2e/syrius/matrix.mjs     <label> <unpacked 0.3.x extension>    # CHROMIUM_PATH
 node e2e/syrius/matrix-mv2.mjs <label> <unpacked 0.1.x extension>    # CHROME_MV2_PATH
