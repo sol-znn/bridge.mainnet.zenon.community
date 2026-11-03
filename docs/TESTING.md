@@ -36,6 +36,8 @@ themselves.
 | `lab-orchestrator.test.ts` | Exact original retries, shutdown ownership and canonical log identity |
 | `lab-publication.test.ts` | Receive source ownership and confirmed acknowledgement depth |
 | `lab-journal.test.ts` | Archived definite pre-publication rejections; transport/internal/unknown failures stay pending |
+| `lab-wallet.test.ts` | The devnet mnemonic still derives the lab administrator's address; whitespace is normalised and an invalid phrase refused |
+| `bip39-wordlist.test.ts` | The lab's English wordlist loads from both BIP39 export layouts and a malformed list is refused |
 | `readiness.test.ts` | Cold-start minimum height and five-node exact recent hash/chain agreement |
 | `compile.test.ts` | Source/compiler/import/settings cache identity |
 | `state.test.ts` | Retired node/account scopes, atomic refresh and bounded histories |

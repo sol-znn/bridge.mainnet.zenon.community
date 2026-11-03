@@ -1,34 +1,34 @@
 {
   "schema": 2,
   "scope": "CI-installed packages classified as non-dev by the exact lockfile; not a claim that all are bundled",
-  "lockfileSha256": "4b010dd5cb4dd5ab9c99916b5d06dcfe9996fbdafd9dad8ee890b8c2d79d14e3",
+  "lockfileSha256": "f7f92e4be8f0c2fc13731ed3e1b387806d8ef9b3d38c9b0962ddb45d0b414800",
   "provenance": "Observed package versions and exact notice bytes from three independently qualified npm ci/build jobs; upstream tarball integrity remains declared by the lockfile, not requalified by this inventory",
   "observation": {
     "repository": "sol-znn/bridge.mainnet.zenon.community",
-    "sourceCommit": "243acffecfba87d23b6e453cadf08fec7138ac72",
-    "candidateCommit": "b081d7cf3e6ef186d95db727333d81f6a85c8325",
-    "sourceTree": "49880738c3bc987970bed3063c1181881c4a933d",
-    "runId": 41693003679,
+    "sourceCommit": "5b6c5d8baea2018e570dcbd6f0aee1b1895d2785",
+    "candidateCommit": "5b6c5d8baea2018e570dcbd6f0aee1b1895d2785",
+    "sourceTree": "c2688581a8f84a07fff815f85718e8f23132e7e8",
+    "runId": 41699942395,
     "attempt": 1,
-    "sourceInputsHash": "a2f963f0ecbaa0c91f85b7596af3d00e78849ec33dcb93d710457b74797ad047",
+    "sourceInputsHash": "2be36708611cd3910d43d716b5f0af3c7a8641e80967ac77e018801a66bfc1fa",
     "nodeVersions": [
-      "22.23.3",
+      "22.23.4",
       "24.22.1",
       "26.5.0"
     ],
-    "noticeManifestSha256": "e93a059344016568a5b526fff1f0e90dc08ce033b3fc24a913d972aabdba679f",
+    "noticeManifestSha256": "806650691711260b647dffc1b035bb2a0510966bd1d4a4bf0dd916a2edc8fb09",
     "buildArtifacts": [
       {
-        "id": 13257876572,
-        "sha256": "9b3c282ed8f99647e3374e30b4aa8ab0f2a1b50eed76f018d4feecd46f70ff89"
+        "id": 13263061960,
+        "sha256": "1e3f67888e47606782879561c4222dfff94f731545cb303ac1651d13815e3a22"
       },
       {
-        "id": 13257159433,
-        "sha256": "e18564c3416d1b2c33fbb8e21498e08a6a3703aca0b6d88d583d4ba53ac9008c"
+        "id": 13262852395,
+        "sha256": "fdaad8f469ed02d9054e51c12ad011a2211ea165cd54040531c35bd7e2ded835"
       },
       {
-        "id": 13258770167,
-        "sha256": "696a661b04fd089db60945c34ade297d076b38da8ceec045a18c598e5d3d1beb"
+        "id": 13262468801,
+        "sha256": "458f1591c562dd17ba5087abf71c9a1f1bf7bcea146658d370a19ae10e5bdf23"
       }
     ]
   },
@@ -127,13 +127,13 @@
     {
       "packagePath": "node_modules/@lucide/vue",
       "name": "@lucide/vue",
-      "lockedVersion": "1.61.0",
-      "integrity": "sha512-XYclbwUQ6Mvf0UskBG9gJH91BdF3VK4Tt6Pv8PSntwPwNnf357PCQnma4TrzOEdwD49UYCtsTafpfytRIxm1cQ==",
+      "lockedVersion": "1.66.0",
+      "integrity": "sha512-cyALYgAzCD2uZ557pM5I/dmFAyTKqtwY7PrdU67gzITkTH+V635u7Uv7VBpQ5hqvmlGqRtbqSDx08LCJHU+GAw==",
       "declaredLicense": "ISC",
       "noticeFileSha256": {
         "LICENSE": "b495047bd93a9b06913511076f504daba17d5bbeb3e0650f3bb53a4220329c57"
       },
-      "observedBuiltNoticeVersion": "1.61.0"
+      "observedBuiltNoticeVersion": "1.66.0"
     },
     {
       "packagePath": "node_modules/@noble/ciphers",
@@ -203,28 +203,6 @@
     },
     {
       "packagePath": "node_modules/@scure/bip32/node_modules/@noble/hashes",
-      "name": "@noble/hashes",
-      "lockedVersion": "1.8.0",
-      "integrity": "sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==",
-      "declaredLicense": "MIT",
-      "noticeFileSha256": {
-        "LICENSE": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec"
-      },
-      "observedBuiltNoticeVersion": "1.8.0"
-    },
-    {
-      "packagePath": "node_modules/@scure/bip39",
-      "name": "@scure/bip39",
-      "lockedVersion": "1.6.0",
-      "integrity": "sha512-+lF0BbLiJNwVlev4eKelw1WWLaiKXw7sSl8T6FvBlWkdX+94aGJ4o8XjUdlyhTCjd8c+B3KT3JfS8P0bLRNU6A==",
-      "declaredLicense": "MIT",
-      "noticeFileSha256": {
-        "LICENSE": "1565efd0ec4580bfaa96c7eeaaa9af3791baa1cc562c3bde62d0a055910b9ec7"
-      },
-      "observedBuiltNoticeVersion": "1.6.0"
-    },
-    {
-      "packagePath": "node_modules/@scure/bip39/node_modules/@noble/hashes",
       "name": "@noble/hashes",
       "lockedVersion": "1.8.0",
       "integrity": "sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==",
@@ -446,13 +424,13 @@
     {
       "packagePath": "node_modules/ox",
       "name": "ox",
-      "lockedVersion": "0.14.57",
-      "integrity": "sha512-CPF6aEFyAuqgL0x7VaFM0vI2/CUd5Qk8+BIL6OnViPw+gF07O/VAhqEPOPw5GYnYPwomIk8mD91gTcQ1RAtupA==",
+      "lockedVersion": "0.14.59",
+      "integrity": "sha512-Y+DPEQScTEGKteQATjtytE1JRQ5cg1R2+DvYQ/lbhUCm/xS9n0Jnkkf2AqQyIntefQxs8xY6dZ+kyNZ7zf2FzA==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "84ecb61c470de66e88a79c7d0ee8ce068e743693a4c249017545b4c8d4f9984d"
       },
-      "observedBuiltNoticeVersion": "0.14.57"
+      "observedBuiltNoticeVersion": "0.14.59"
     },
     {
       "packagePath": "node_modules/ox/node_modules/@noble/curves",
@@ -475,6 +453,17 @@
         "LICENSE": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec"
       },
       "observedBuiltNoticeVersion": "1.8.0"
+    },
+    {
+      "packagePath": "node_modules/ox/node_modules/@scure/bip39",
+      "name": "@scure/bip39",
+      "lockedVersion": "1.6.0",
+      "integrity": "sha512-+lF0BbLiJNwVlev4eKelw1WWLaiKXw7sSl8T6FvBlWkdX+94aGJ4o8XjUdlyhTCjd8c+B3KT3JfS8P0bLRNU6A==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "1565efd0ec4580bfaa96c7eeaaa9af3791baa1cc562c3bde62d0a055910b9ec7"
+      },
+      "observedBuiltNoticeVersion": "1.6.0"
     },
     {
       "packagePath": "node_modules/picocolors",
@@ -523,13 +512,13 @@
     {
       "packagePath": "node_modules/viem",
       "name": "viem",
-      "lockedVersion": "2.57.11",
-      "integrity": "sha512-kvcBGXzIGmZu3GqaA83ZOLzVC57YO7WCgQrGcUHNKqZ8Cjqc9vV//uGna4Nhv0NGHn2gekw1FNdSvQePNnYePQ==",
+      "lockedVersion": "2.57.13",
+      "integrity": "sha512-hSIsR4Y47BKrp89idH11WC3pqYOJFq9nVYBYxuJ9zXCA8Qg3pQhnlhnHn4qnjo7Z5wXs920XhtWbnrAtFidk+Q==",
       "declaredLicense": "MIT",
       "noticeFileSha256": {
         "LICENSE": "091d17ae5f625ffeb381e7109daaf6c492dd32502d612d8ecd24e2ddf6d16b74"
       },
-      "observedBuiltNoticeVersion": "2.57.11"
+      "observedBuiltNoticeVersion": "2.57.13"
     },
     {
       "packagePath": "node_modules/viem/node_modules/@noble/curves",
@@ -552,6 +541,17 @@
         "LICENSE": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec"
       },
       "observedBuiltNoticeVersion": "1.8.0"
+    },
+    {
+      "packagePath": "node_modules/viem/node_modules/@scure/bip39",
+      "name": "@scure/bip39",
+      "lockedVersion": "1.6.0",
+      "integrity": "sha512-+lF0BbLiJNwVlev4eKelw1WWLaiKXw7sSl8T6FvBlWkdX+94aGJ4o8XjUdlyhTCjd8c+B3KT3JfS8P0bLRNU6A==",
+      "declaredLicense": "MIT",
+      "noticeFileSha256": {
+        "LICENSE": "1565efd0ec4580bfaa96c7eeaaa9af3791baa1cc562c3bde62d0a055910b9ec7"
+      },
+      "observedBuiltNoticeVersion": "1.6.0"
     },
     {
       "packagePath": "node_modules/vue",

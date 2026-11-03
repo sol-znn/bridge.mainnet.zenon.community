@@ -13,8 +13,9 @@ and 2.4.0. Qualification installs each exact published version in an isolated
 temporary directory on Node 22, 24 and 26.5. The six cases verify the complete
 wordlist, entropy round trips and two published seed vectors. Reports retain
 source, runtime, lockfile and package-integrity digests without phrases or seeds.
-These fixtures do not change the lab's locked BIP39 version or qualify real
-wallets. Major dependency adoption remains a separate reviewed change.
+The lockfile pins 2.4.0 since #20; the 1.6.0 cases keep the old layout working
+while viem still depends on it. These fixtures do not change the locked version
+or qualify real wallets.
 
 ## Native lab
 
