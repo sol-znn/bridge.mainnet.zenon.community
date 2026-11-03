@@ -52,8 +52,10 @@
   },
   "overrides": {
     "solc": {
-      "tmp": "0.2.7"
-    }
+      "tmp": "0.2.7",
+      "follow-redirects": "1.16.2"
+    },
+    "minimatch": "11.0.1"
   },
   "engines": {
     "node": "^22.13.0 || ^24.0.0 || >=26.0.0"

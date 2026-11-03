@@ -35,6 +35,39 @@ jobs:
           path: dist
           include-hidden-files: true
           retention-days: 14
+  bip39-compat:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22', '24', '26.5.0']
+        bip39: ['1.6.0', '2.4.0']
+    env:
+      BIP39_FIXTURE_ROOT: ${{ runner.temp }}/bridge-bip39-fixture
+      EXPECTED_BIP39_VERSION: ${{ matrix.bip39 }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Install the exact isolated BIP39 package
+        run: |
+          mkdir "$BIP39_FIXTURE_ROOT"
+          printf '%s\n' '{"name":"bridge-bip39-compatibility-fixture","private":true}' > "$BIP39_FIXTURE_ROOT/package.json"
+          npm install --prefix "$BIP39_FIXTURE_ROOT" --save-exact --ignore-scripts --no-audit --no-fund "@scure/bip39@$EXPECTED_BIP39_VERSION"
+      - name: Verify both export layouts and published seed vectors
+        run: node e2e/bip39-compatibility-control.mjs
+      - name: Retain sanitized BIP39 compatibility evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: bip39-compat-node-${{ matrix.node }}-v${{ matrix.bip39 }}
+          path: .browser-results/bip39-compatibility.json
+          include-hidden-files: true
+          retention-days: 14
   browser-transport:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
