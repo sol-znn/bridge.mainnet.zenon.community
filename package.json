@@ -25,11 +25,11 @@
   "dependencies": {
     "@fontsource-variable/jetbrains-mono": "^5.2.5",
     "@fontsource-variable/space-grotesk": "^5.2.5",
-    "@lucide/vue": "1.61.0",
+    "@lucide/vue": "1.66.0",
     "@noble/curves": "^2.4.0",
     "@noble/hashes": "^2.4.0",
     "bech32": "^2.0.0",
-    "viem": "^2.57.11",
+    "viem": "^2.57.13",
     "vue": "^3.5.44"
   },
   "devDependencies": {
