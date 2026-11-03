@@ -1,33 +1,34 @@
 {
   "schema": 2,
   "scope": "CI-installed packages classified as non-dev by the exact lockfile; not a claim that all are bundled",
-  "lockfileSha256": "e45a5617baa32bbc02b7888cc448860f4022e1b9d21e563cdaf0d5a9908d6147",
+  "lockfileSha256": "4b010dd5cb4dd5ab9c99916b5d06dcfe9996fbdafd9dad8ee890b8c2d79d14e3",
   "provenance": "Observed package versions and exact notice bytes from three independently qualified npm ci/build jobs; upstream tarball integrity remains declared by the lockfile, not requalified by this inventory",
   "observation": {
     "repository": "sol-znn/bridge.mainnet.zenon.community",
-    "sourceCommit": "db4924e963dd445c860c71eb9a84807e6dedb513",
-    "sourceTree": "f789282e1e07a621c03c5ab55c9052f78d75dabd",
-    "runId": 40804467240,
+    "sourceCommit": "243acffecfba87d23b6e453cadf08fec7138ac72",
+    "candidateCommit": "b081d7cf3e6ef186d95db727333d81f6a85c8325",
+    "sourceTree": "49880738c3bc987970bed3063c1181881c4a933d",
+    "runId": 41693003679,
     "attempt": 1,
-    "sourceInputsHash": "0e7000d6d3dcf9c10dfc426602f6e28a7bcc82f74cfa56da3f0cb3db37ca32da",
+    "sourceInputsHash": "a2f963f0ecbaa0c91f85b7596af3d00e78849ec33dcb93d710457b74797ad047",
     "nodeVersions": [
-      "22.23.4",
+      "22.23.3",
       "24.22.1",
       "26.5.0"
     ],
-    "noticeManifestSha256": "939c3696888a202dd9d5fd9b04b7216b3939c2426bf6a2df87ca5dac18a13569",
+    "noticeManifestSha256": "e93a059344016568a5b526fff1f0e90dc08ce033b3fc24a913d972aabdba679f",
     "buildArtifacts": [
       {
-        "id": 12867821194,
-        "sha256": "9d53b9d8646d83f565b11698c8496a7ed90cbad5615caf893ceb72a71d8bc5c9"
+        "id": 13257876572,
+        "sha256": "9b3c282ed8f99647e3374e30b4aa8ab0f2a1b50eed76f018d4feecd46f70ff89"
       },
       {
-        "id": 12868160121,
-        "sha256": "4ab09f634ce023c3ccb3d4cf99a53110dee15f70fe551b905a3e875c39989b0d"
+        "id": 13257159433,
+        "sha256": "e18564c3416d1b2c33fbb8e21498e08a6a3703aca0b6d88d583d4ba53ac9008c"
       },
       {
-        "id": 12867831143,
-        "sha256": "f8249f80c4c100c02be17ffc0ddb92927a9e2e439c0e6715d505639768d4ba08"
+        "id": 13258770167,
+        "sha256": "696a661b04fd089db60945c34ade297d076b38da8ceec045a18c598e5d3d1beb"
       }
     ]
   },

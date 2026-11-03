@@ -6,6 +6,16 @@ All keys here are committed public fixtures. Never fund them outside the isolate
 
 Clone `https://github.com/sol-znn/go-zenon`, check out `616f0a61ebc8562846965822f94976e531e0937c`, and set `GO_ZENON_DIR` to that checkout. Working-tree edits are excluded: the build exports that exact commit and checks its tree against `lab/pins.json`. Review the fork and the explicit devnet bridge overlay; this is not an official-mainnet qualification.
 
+## BIP39 package compatibility
+
+The Node-only lab wallet supports the English wordlist exports in BIP39 1.6.0
+and 2.4.0. Qualification installs each exact published version in an isolated
+temporary directory on Node 22, 24 and 26.5. The six cases verify the complete
+wordlist, entropy round trips and two published seed vectors. Reports retain
+source, runtime, lockfile and package-integrity digests without phrases or seeds.
+These fixtures do not change the lab's locked BIP39 version or qualify real
+wallets. Major dependency adoption remains a separate reviewed change.
+
 ## Native lab
 
 Install Go 1.27.1 and Anvil 1.8.5. Verify the appropriate official archive SHA256 from `lab/pins.json`, set `LAB_GO_BIN` if Go is not on PATH, and set `ANVIL_BIN` to the extracted executable. Install the pinned Chrome for Testing headless shell with the lockfile's `node_modules/.bin/browsers install chrome-headless-shell@155.0.8059.39 --path <tools-directory>` and set `CHROME_PATH` to it.
