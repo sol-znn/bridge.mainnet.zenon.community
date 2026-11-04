@@ -1,19 +1,22 @@
 import fs from 'node:fs'
+import path from 'node:path'
 import { launchFirefox, session } from './marionette.mjs'
+import { assertWalletLab, assertPageOrigin, createResultsDirectory, EVM_READ_METHODS } from './lab-safety.mjs'
 
 const [label, extDir, addonId] = process.argv.slice(2)
+if (!extDir || !addonId) throw new Error('Set an isolated extension directory and add-on ID')
 const MNEMONIC = 'abstract affair idle position alien fluid board ordinary exist afraid chapter wood wood guide sun walnut crew perfect place firm poverty model side million'
 const INDEX3 = 'z1qp3yph55qgresyytz83anynr2f4z39x2z3ej3e'
 const NODE = 'ws://127.0.0.1:46998', NODE_HTTP = 'http://127.0.0.1:46997', CHAIN = 322
 const PAGE_URL = process.env.BRIDGE_URL || 'http://127.0.0.1:4174/'
 const EVM_USER = '0x70997970C51812dc3A010C7d01b50e0d17dc79C8'
 const UUID = '5f0c9a39-1b7e-4a7a-9d2e-0b9f1e7c3a11'
-const out = `${process.env.RESULTS_DIR || 'e2e/.state/syrius'}/${label}`
-fs.mkdirSync(out, { recursive: true })
+await assertWalletLab({ label, pageUrl: PAGE_URL })
+const out = createResultsDirectory(label)
 const log = (...a) => { const line = `[${label}] ${a.join(' ')}`; console.log(line); fs.appendFileSync(`${out}/log.txt`, line + '\n') }
 const wait = (ms) => new Promise((r) => setTimeout(r, ms))
 
-const { proc, client } = await launchFirefox({ profile: `/tmp/ff-${label}-${Date.now()}`, prefs: { 'extensions.webextensions.uuids': JSON.stringify({ [addonId]: UUID }), 'dom.disable_open_during_load': false } })
+const { proc, client } = await launchFirefox({ profile: path.join(out, 'firefox-profile'), prefs: { 'extensions.webextensions.uuids': JSON.stringify({ [addonId]: UUID }), 'dom.disable_open_during_load': false } })
 const s = session(client)
 let step = 'start'
 const clickText = async (text, exact = true) => {
@@ -90,16 +93,32 @@ try {
   const pageHandle = await s.newTab()
   await s.switchTo(pageHandle)
   await s.go(PAGE_URL)
-  await s.exec(`const evmAddress = arguments[0];
+  assertPageOrigin(await s.url(), PAGE_URL)
+  await s.exec(`const evmAddress = arguments[0], expectedOrigin = arguments[1], readMethods = arguments[2];
+    const rpc = async (method, params) => {
+      const response = await fetch('http://127.0.0.1:46545', { method: 'POST', redirect: 'error', signal: AbortSignal.timeout(5000), headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }) })
+      if (response.status !== 200 || !response.body) throw new Error('Isolated wallet lab refused')
+      const reader = response.body.getReader(), chunks = []; let size = 0
+      try { for (;;) { const { value, done } = await reader.read(); if (done) break; size += value.byteLength; if (size > 16384) throw new Error('Isolated wallet lab refused'); chunks.push(value) } }
+      finally { await reader.cancel() }
+      const bytes = new Uint8Array(size); let offset = 0
+      for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength }
+      const reply = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes))
+      if (reply?.jsonrpc !== '2.0' || reply.id !== 1 || Object.hasOwn(reply, 'result') === Object.hasOwn(reply, 'error')) throw new Error('Isolated wallet lab refused')
+      return reply
+    }
     const provider = { async request({ method, params }) {
+      if (location.origin !== expectedOrigin) throw new Error('Isolated wallet lab refused')
       if (method === 'eth_requestAccounts' || method === 'eth_accounts') return [evmAddress]
       if (method === 'eth_chainId') return '0x7a69'
       if (method === 'wallet_switchEthereumChain' || method === 'wallet_addEthereumChain') return null
-      const r = await (await fetch('http://127.0.0.1:46545', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params: params ?? [] }) })).json()
+      if (!readMethods.includes(method) || !Array.isArray(params ?? [])) throw new Error('Isolated wallet lab refused')
+      if ((await rpc('eth_chainId', [])).result !== '0x7a69') throw new Error('Isolated wallet lab refused')
+      const r = await rpc(method, params ?? [])
       if (r.error) throw Object.assign(new Error(r.error.message), { code: r.error.code })
       return r.result }, on() {}, removeListener() {} }
     const announce = () => window.dispatchEvent(new CustomEvent('eip6963:announceProvider', { detail: Object.freeze({ info: { uuid: 'lab-evm', name: 'Lab Wallet', icon: '', rdns: 'lab.wallet' }, provider }) }))
-    window.addEventListener('eip6963:requestProvider', announce); announce(); return true`, [EVM_USER])
+    window.addEventListener('eip6963:requestProvider', announce); announce(); return true`, [EVM_USER, new URL(PAGE_URL).origin, EVM_READ_METHODS])
   await until(async () => String(await s.text()).includes('Anvil'), 90000, 'bridge page')
   await until(async () => s.exec('return window.__bridge?.syrius.present === true'), 20000, 'Syrius detected')
   log('detected', await s.exec('return JSON.stringify({ zenon: Object.keys(window.zenon || {}), mark: [...document.querySelectorAll("script:not([src])")].some((e) => e.textContent.includes("isSyriusExtension")) })'))
@@ -117,6 +136,12 @@ try {
     await until(async () => String(await s.text()).includes('Yes'), 60000, `${what} prompt`)
     await s.shot(`${out}/4-${what}-asked.png`)
     log(`${what} window:`, String(await s.text()).replace(/\s+/g, ' ').slice(0, 300))
+    if (what === 'send') {
+      await s.switchTo(pageHandle)
+      assertPageOrigin(await s.url(), PAGE_URL)
+      await assertWalletLab({ label, pageUrl: PAGE_URL })
+      await s.switchTo(w)
+    }
     await clickText('Yes')
     await until(async () => String(await s.text()).includes('Done'), 120000, `${what} done`).catch(() => {})
     log(`${what} approved:`, String(await s.text()).replace(/\s+/g, ' ').slice(0, 200))
@@ -141,6 +166,8 @@ try {
   await until(async () => s.exec('return document.querySelector("[data-testid=bridge-action]")?.textContent.includes("Bridge to Anvil") && !document.querySelector("[data-testid=bridge-action]").disabled'), 60000, 'bridge action')
   await s.exec('document.querySelector("[data-testid=bridge-action]").click(); return 1'); await wait(800)
   await s.exec('document.querySelector("[data-testid=terms-all]").click(); return 1'); await wait(300)
+  assertPageOrigin(await s.url(), PAGE_URL)
+  await assertWalletLab({ label, pageUrl: PAGE_URL })
   await s.exec('document.querySelector("[data-testid=terms-continue]").click(); return 1')
   await approve('send')
   await until(async () => s.exec('return location.hash === "#/activity"'), 300000, 'activity')

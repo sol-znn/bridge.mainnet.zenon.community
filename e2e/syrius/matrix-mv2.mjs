@@ -1,16 +1,18 @@
 import fs from 'node:fs'
 import puppeteer from 'puppeteer-core'
+import { assertWalletLab, assertPageOrigin, createResultsDirectory, forwardEvmRead } from './lab-safety.mjs'
 
 const [label, extDir] = process.argv.slice(2)
+if (!extDir) throw new Error('Set an isolated extension directory')
 const CHROME = process.env.CHROME_MV2_PATH
 if (!CHROME) throw new Error('set CHROME_MV2_PATH to a Chrome that still loads MV2 extensions (Chrome for Testing 130)')
 const MNEMONIC = 'abstract affair idle position alien fluid board ordinary exist afraid chapter wood wood guide sun walnut crew perfect place firm poverty model side million'
 const INDEX3 = 'z1qp3yph55qgresyytz83anynr2f4z39x2z3ej3e'
 const NODE = 'ws://127.0.0.1:46998', NODE_HTTP = 'http://127.0.0.1:46997', CHAIN = 322
 const PAGE_URL = process.env.BRIDGE_URL || 'http://127.0.0.1:4174/'
-const EVM_RPC = 'http://127.0.0.1:46545', EVM_USER = '0x70997970C51812dc3A010C7d01b50e0d17dc79C8'
-const out = `${process.env.RESULTS_DIR || 'e2e/.state/syrius'}/${label}`
-fs.mkdirSync(out, { recursive: true })
+const EVM_USER = '0x70997970C51812dc3A010C7d01b50e0d17dc79C8'
+await assertWalletLab({ label, pageUrl: PAGE_URL })
+const out = createResultsDirectory(label)
 const log = (...a) => { const line = `[${label}] ${a.join(' ')}`; console.log(line); fs.appendFileSync(`${out}/log.txt`, line + '\n') }
 const wait = (ms) => new Promise((r) => setTimeout(r, ms))
 const errors = []
@@ -94,11 +96,7 @@ try {
   await page.setViewport({ width: 1280, height: 900 })
   page.on('pageerror', (e) => errors.push(String(e.message || e)))
   page.on('console', (m) => m.type() === 'error' && !/Content Security Policy/.test(m.text()) && errors.push(m.text()))
-  await page.exposeFunction('__labEvmRequest', async (json) => {
-    const { method, params } = JSON.parse(json)
-    const res = await fetch(EVM_RPC, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }) })
-    return JSON.stringify(await res.json())
-  })
+  await page.exposeFunction('__labEvmRequest', (json) => forwardEvmRead(json, page.url(), PAGE_URL))
   await page.evaluateOnNewDocument((evmAddress) => {
     const provider = {
       async request({ method, params }) {
@@ -114,6 +112,7 @@ try {
     window.addEventListener('eip6963:requestProvider', announce); announce()
   }, EVM_USER)
   await page.goto(PAGE_URL, { waitUntil: 'domcontentloaded' })
+  assertPageOrigin(page.url(), PAGE_URL)
   await page.waitForFunction(() => document.body.innerText.includes('Anvil'), { timeout: 90000 })
   await page.waitForFunction(() => window.__bridge?.syrius.present === true, { timeout: 20000 })
   log('detected', await page.evaluate(() => JSON.stringify({ zenon: Object.keys(window.zenon || {}), mark: [...document.querySelectorAll('script:not([src])')].some((e) => e.textContent.includes('isSyriusExtension')) })))
@@ -127,6 +126,10 @@ try {
     w.on('console', (m) => log(`${what} console:`, m.type(), m.text().slice(0, 200)))
     w.on('pageerror', (e) => log(`${what} error:`, String(e.message || e).slice(0, 200)))
     const yes = await w.$$('button, input[type=submit]').then(async (bs) => { for (const b of bs) if (((await b.evaluate((e) => (e.innerText || e.value || '').trim())) === 'Yes')) return b })
+    if (what === 'send') {
+      assertPageOrigin(page.url(), PAGE_URL)
+      await assertWalletLab({ label, pageUrl: PAGE_URL })
+    }
     if (yes) await yes.click(); else await clickText(w, 'Yes')
     for (let t = 0; t < 600; t += 30) {
       const txt = (await textOf(w).catch(() => '(closed)')).replace(/\s+/g, ' ')
@@ -158,6 +161,8 @@ try {
   await page.waitForFunction(() => document.querySelector('[data-testid="bridge-action"]')?.textContent?.includes('Bridge to Anvil'), { timeout: 60000 })
   await click('[data-testid="bridge-action"]')
   await click('[data-testid="terms-all"]')
+  assertPageOrigin(page.url(), PAGE_URL)
+  await assertWalletLab({ label, pageUrl: PAGE_URL })
   await click('[data-testid="terms-continue"]')
   await approve('send')
   await page.waitForFunction(() => location.hash === '#/activity', { timeout: 660000 })

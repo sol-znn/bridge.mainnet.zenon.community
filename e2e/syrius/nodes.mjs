@@ -1,10 +1,10 @@
-import fs from 'node:fs'
 import puppeteer from 'puppeteer-core'
+import { validateBridgeUrl, assertPageOrigin, createResultsDirectory } from './lab-safety.mjs'
 
 const PAGE_URL = process.env.BRIDGE_URL || 'http://127.0.0.1:4174/'
 const MINE = 'ws://localhost:46998'
-const out = `${process.env.RESULTS_DIR || 'e2e/.state/syrius'}/nodes`
-fs.mkdirSync(out, { recursive: true })
+validateBridgeUrl(PAGE_URL)
+const out = createResultsDirectory('nodes')
 const log = (...a) => console.log('[nodes]', ...a)
 const wait = (ms) => new Promise((r) => setTimeout(r, ms))
 const browser = await puppeteer.launch({ executablePath: process.env.CHROMIUM_PATH || '/usr/bin/chromium', headless: true, args: ['--no-sandbox'] })
@@ -32,6 +32,7 @@ try {
   const problem = () => page.$eval('[data-testid="node-problem"]', (e) => e.textContent.trim()).catch(() => '')
 
   await page.goto(PAGE_URL, { waitUntil: 'domcontentloaded' })
+  assertPageOrigin(page.url(), PAGE_URL)
   await page.waitForFunction(() => window.__bridge?.node.chainId, { timeout: 60000 })
   const start = await state()
   log('default', JSON.stringify(start))

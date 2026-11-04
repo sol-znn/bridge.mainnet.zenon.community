@@ -1,14 +1,16 @@
 import fs from 'node:fs'
 import puppeteer from 'puppeteer-core'
+import { assertWalletLab, assertPageOrigin, createResultsDirectory, forwardEvmRead } from './lab-safety.mjs'
 
 const [label, extDir] = process.argv.slice(2)
+if (!extDir) throw new Error('Set an isolated extension directory')
 const MNEMONIC = 'abstract affair idle position alien fluid board ordinary exist afraid chapter wood wood guide sun walnut crew perfect place firm poverty model side million'
 const INDEX3 = 'z1qp3yph55qgresyytz83anynr2f4z39x2z3ej3e'
 const NODE = 'ws://127.0.0.1:46998', NODE_HTTP = 'http://127.0.0.1:46997', CHAIN = 322
 const PAGE_URL = process.env.BRIDGE_URL || 'http://127.0.0.1:4174/'
-const EVM_RPC = 'http://127.0.0.1:46545', EVM_USER = '0x70997970C51812dc3A010C7d01b50e0d17dc79C8'
-const out = `${process.env.RESULTS_DIR || 'e2e/.state/syrius'}/${label}`
-fs.mkdirSync(out, { recursive: true })
+const EVM_USER = '0x70997970C51812dc3A010C7d01b50e0d17dc79C8'
+await assertWalletLab({ label, pageUrl: PAGE_URL })
+const out = createResultsDirectory(label)
 const log = (...a) => { const line = `[${label}] ${a.join(' ')}`; console.log(line); fs.appendFileSync(`${out}/log.txt`, line + '\n') }
 const wait = (ms) => new Promise((r) => setTimeout(r, ms))
 const errors = []
@@ -85,11 +87,7 @@ try {
   await page.setViewport({ width: 1280, height: 900 })
   page.on('pageerror', (e) => errors.push(String(e.message || e)))
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()))
-  await page.exposeFunction('__labEvmRequest', async (json) => {
-    const { method, params } = JSON.parse(json)
-    const res = await fetch(EVM_RPC, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }) })
-    return JSON.stringify(await res.json())
-  })
+  await page.exposeFunction('__labEvmRequest', (json) => forwardEvmRead(json, page.url(), PAGE_URL))
   await page.evaluateOnNewDocument((evmAddress) => {
     const w = window
     const provider = {
@@ -109,6 +107,7 @@ try {
     announce()
   }, EVM_USER)
   await page.goto(PAGE_URL, { waitUntil: 'domcontentloaded' })
+  assertPageOrigin(page.url(), PAGE_URL)
   await page.waitForFunction(() => document.body.innerText.includes('Anvil'), { timeout: 90000 })
   await page.waitForFunction(() => window.__bridge?.syrius.present === true, { timeout: 20000 })
   const provider = await page.evaluate(() => ({ version: window.zenon?.version ?? null, keys: Object.keys(window.zenon || {}).sort().join(','), legacy: !window.zenon?.sendAccountBlock }))
@@ -138,6 +137,10 @@ popup: ${(await textOf(popup)).replace(/\s+/g, ' ').slice(0, 300)}`)
       const ready = await w.evaluate((src) => [...document.querySelectorAll('button')].some((b) => new RegExp(src).test(b.innerText.trim()) && !b.disabled), action.source).catch(() => false)
       if (ready) break
       await wait(1000)
+    }
+    if (what === 'send') {
+      assertPageOrigin(page.url(), PAGE_URL)
+      await assertWalletLab({ label, pageUrl: PAGE_URL })
     }
     await clickText(w, action, 'button')
     log(`${what} approved`)
@@ -169,6 +172,8 @@ popup: ${(await textOf(popup)).replace(/\s+/g, ' ').slice(0, 300)}`)
   })
   await click('[data-testid="bridge-action"]')
   await click('[data-testid="terms-all"]')
+  assertPageOrigin(page.url(), PAGE_URL)
+  await assertWalletLab({ label, pageUrl: PAGE_URL })
   await click('[data-testid="terms-continue"]')
   await approve('send')
   await page.waitForFunction(() => location.hash === '#/activity', { timeout: 300000 })
