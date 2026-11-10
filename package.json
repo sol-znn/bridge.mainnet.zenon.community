@@ -36,7 +36,7 @@
     "@openzeppelin/contracts": "^4.9.6",
     "@scure/bip39": "^2.4.0",
     "@tailwindcss/vite": "^4.1.0",
-    "@types/node": "^22.10.0",
+    "@types/node": "^26.6.6",
     "@vitejs/plugin-vue": "^6.0.1",
     "@vitest/coverage-v8": "5.0.5",
     "eslint": "10.14.0",
